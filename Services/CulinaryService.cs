@@ -50,16 +50,16 @@ namespace FoodSprint.Services
                     Items = new() { "2 Hamachi Crudo", "1 Little Gem Salad", "1 Burrata & Persimmon" },
                     ItemDetails = new()
                     {
-                        new() { Name = "2 Hamachi Crudo" },
-                        new() { Name = "1 Little Gem Salad" },
-                        new() { Name = "1 Burrata & Persimmon" }
+                        new() { Name = "Hamachi Crudo", Note = "Extra citrus" },
+                        new() { Name = "Little Gem Salad" },
+                        new() { Name = "Burrata & Persimmon" }
                     }
                 },
                 new KitchenTicket
                 {
                     TicketId = 102,
                     TableNumber = 7,
-                    Guests = 4,
+                    Guests = 3,
                     ActiveCourse = "Mains",
                     Station = "Hot Line",
                     ElapsedMinutes = 14,
@@ -70,16 +70,16 @@ namespace FoodSprint.Services
                     Items = new() { "1 Roasted Atlantic Cod (NO PEANUT)", "1 Charred Broccolini (ALLERGY)", "1 Carnaroli Risotto" },
                     ItemDetails = new()
                     {
-                        new() { Name = "1 Roasted Atlantic Cod", Badge = "NO PEANUT" },
-                        new() { Name = "1 Charred Broccolini", Badge = "ALLERGY", Note = "Clean pan · fresh gloves" },
-                        new() { Name = "1 Carnaroli Risotto", Note = "No shared garnish" }
+                        new() { Name = "Roasted Atlantic Cod", Badge = "NO PEANUT" },
+                        new() { Name = "Charred Broccolini", Badge = "ALLERGY", Note = "Clean pan · fresh gloves" },
+                        new() { Name = "Carnaroli Risotto", Note = "No shared garnish" }
                     }
                 },
                 new KitchenTicket
                 {
                     TicketId = 103,
                     TableNumber = 12,
-                    Guests = 3,
+                    Guests = 2,
                     ActiveCourse = "Mains",
                     Station = "Sauté",
                     ElapsedMinutes = 9,
@@ -87,12 +87,12 @@ namespace FoodSprint.Services
                     AllergyAlert = "None",
                     IsRush = false,
                     Status = "Cooking",
-                    Items = new() { "1 Dry-Aged Duck", "1 Wild Mushroom Risotto", "2 Warm Olive Cake" },
+                    Items = new() { "1 Dry-Aged Duck (Medium rare)", "1 Wild Mushroom Risotto", "2 Warm Olive Cake" },
                     ItemDetails = new()
                     {
-                        new() { Name = "1 Dry-Aged Duck" },
-                        new() { Name = "1 Wild Mushroom Risotto" },
-                        new() { Name = "2 Warm Olive Cake" }
+                        new() { Name = "Dry-Aged Duck", Note = "Medium rare" },
+                        new() { Name = "Wild Mushroom Risotto" },
+                        new() { Name = "Warm Olive Cake" }
                     }
                 }
             });
