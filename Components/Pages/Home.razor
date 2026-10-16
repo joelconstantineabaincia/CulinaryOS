@@ -4,269 +4,198 @@
 
 <PageTitle>Recipe Costing & Menu Engineering · CulinaryOS</PageTitle>
 
-<div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-4 border-bottom gap-2">
+<div class="screen">
+    <!-- Page Heading -->
+    <div class="page-heading">
         <div>
-            <div class="kicker-terracotta mb-1">MENU · FALL DINNER 2025</div>
-            <h2 class="serif-heading mb-1" style="font-size: 1.85rem;">Recipe Costing & Menu Engineering</h2>
-            <p class="text-muted small mb-0">Model profitable recipes and optimize contribution margin.</p>
+            <div class="eyebrow">Menu · Fall dinner 2025</div>
+            <h1>Recipe Costing & Menu Engineering</h1>
+            <p>Model profitable recipes and optimize contribution margin.</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <!-- Terracotta solid button without duplicate + icon -->
-            <button class="btn btn-terracotta px-3 py-2 fw-semibold shadow-sm" style="border-radius: 6px;" @onclick="CreateNewRecipe">
-                + New recipe
-            </button>
-        </div>
+        <button class="button primary-button" type="button" @onclick="CreateNewRecipe">
+            <Icon Name="plus" Size="16" /> New recipe
+        </button>
     </div>
 
     @if (!string.IsNullOrEmpty(saveAlertMessage))
     {
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center py-2 px-3 mb-3 shadow-sm border-0" style="background-color: #EBF5F0; color: #2E7D5B;" role="alert">
-            <span class="me-2">✓</span>
-            <div class="small fw-semibold">@saveAlertMessage</div>
-            <button type="button" class="btn-close btn-close-sm ms-auto" @onclick="() => saveAlertMessage = string.Empty"></button>
+        <div class="sage-pill mb-2" style="width: fit-content; font-size: 11px; padding: 8px 12px; margin-bottom: 10px;">
+            <span class="status-dot"></span> @saveAlertMessage
         </div>
     }
 
-    <!-- Two Major Cards Split Section -->
-    <div class="row g-4">
-        <!-- LEFT COLUMN: Cost Estimator -->
-        <div class="col-xl-5 col-lg-5">
-            <div class="warm-card h-100 d-flex flex-column">
-                <div class="warm-card-header d-flex justify-content-between align-items-center py-3 px-4">
-                    <div>
-                        <h5 class="fw-bold mb-0" style="font-size: 1rem; color: var(--text-primary);">Cost estimator</h5>
-                        <small class="text-muted">Current draft recipe modeling</small>
-                    </div>
-                    <!-- DRAFT pill badge in top-right -->
-                    <span class="badge font-mono px-2.5 py-1" style="background-color: #ECEBE5; color: #787670; border: 1px solid #DFDED7; font-size: 0.72rem; letter-spacing: 0.05em;">
-                        DRAFT
-                    </span>
+    <!-- Recipe Layout Split Screen -->
+    <div class="recipe-layout">
+        <!-- Left Card: Cost Estimator -->
+        <section class="estimator-card">
+            <div class="section-header">
+                <div>
+                    <h2>Cost estimator</h2>
+                    <p>@draftDishName</p>
+                </div>
+                <span class="draft-pill">Draft</span>
+            </div>
+
+            <div class="estimator-body">
+                <div class="field-label">
+                    <span>Target food cost</span>
+                    <strong>@foodCost%</strong>
                 </div>
 
-                <div class="card-body p-4 d-flex flex-column flex-grow-1">
-                    <!-- Draft Dish Title Field -->
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-muted mb-1">Dish Name</label>
-                        <input type="text" class="form-control form-control-sm fw-semibold" style="border-color: var(--border-subtle);" @bind="draftDishName" placeholder="e.g. Roasted Atlantic Cod" />
+                <input aria-label="Target food cost"
+                       class="range"
+                       max="45"
+                       min="15"
+                       type="range"
+                       @bind="foodCost"
+                       @bind:event="oninput"
+                       style="--range-progress: @(((foodCost - 15) / 30.0) * 100)%;" />
+
+                <div class="range-labels">
+                    <span>15%</span>
+                    <span>Industry target 28–32%</span>
+                    <span>45%</span>
+                </div>
+
+                <!-- Sub-recipe breakdown table -->
+                <div class="ingredient-list">
+                    <div class="ingredient-list-head">
+                        <span>Sub-recipe breakdown</span>
+                        <span>Cost</span>
                     </div>
 
-                    <!-- Target Food Cost Slider -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-baseline mb-1">
-                            <span class="small fw-semibold text-muted">Target food cost</span>
-                            <span class="font-mono fw-bold" style="color: var(--brand-terracotta); font-size: 1.05rem;">@(targetFoodCost)%</span>
-                        </div>
-                        <div class="slider-container">
-                            <input type="range" class="slider-terracotta" min="15" max="45" @bind="targetFoodCost" @bind:event="oninput" />
-                        </div>
-                        <div class="d-flex justify-content-between text-muted font-mono" style="font-size: 0.72rem;">
-                            <span>15%</span>
-                            <span class="text-secondary fw-semibold">Industry target 28–32%</span>
-                            <span>45%</span>
-                        </div>
-                    </div>
-
-                    <!-- Clean Form Inputs with $ Prefix Badges -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Ingredient cost</label>
-                            <div class="input-currency-box">
-                                <span class="input-currency-badge">$</span>
-                                <input type="number" step="0.10" class="form-control form-control-sm input-currency-input"
-                                       @bind="ingredientCost" @bind:event="oninput" />
+                    @foreach (var ing in ingredients)
+                    {
+                        <div class="cost-line">
+                            <div>
+                                <strong>@ing.Name</strong>
+                                <span>@ing.Detail</span>
                             </div>
+                            <strong>@ing.Cost.ToString("C")</strong>
                         </div>
+                    }
 
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Prep labor</label>
-                            <div class="input-currency-box">
-                                <span class="input-currency-badge">$</span>
-                                <input type="number" step="0.10" class="form-control form-control-sm input-currency-input"
-                                       @bind="prepLabor" @bind:event="oninput" />
-                            </div>
+                    <div class="cost-total">
+                        <span>Total plate cost</span>
+                        <strong>$@TotalPlateCost.ToString("0.00")</strong>
+                    </div>
+                </div>
+
+                <!-- Dynamic Margin Panel with Conic-Gradient Margin Dial -->
+                <div class="margin-panel">
+                    <div class="margin-dial" style="--dial-value: @(TargetMargin * 3.6)deg;">
+                        <div>
+                            <strong>@TargetMargin%</strong>
+                            <span>margin</span>
                         </div>
                     </div>
-
-                    <div class="mb-4">
-                        <label class="form-label small fw-semibold text-muted mb-1">Menu price</label>
-                        <div class="input-currency-box">
-                            <span class="input-currency-badge">$</span>
-                            <input type="number" step="0.50" class="form-control form-control-sm input-currency-input fs-6"
-                                   @bind="menuPrice" @bind:event="oninput" />
-                        </div>
-                    </div>
-
-                    <!-- Projected Contribution Card: soft sage tinted background (#EBF5F0) -->
-                    <div class="p-3 text-center mb-3" style="background-color: var(--sage-green-light, #EBF5F0); border: 1px solid #D6ECE0; border-radius: 8px;">
-                        <div class="kicker-muted mb-2" style="color: #2E7D5B;">Projected Contribution</div>
-                        <div class="d-inline-flex justify-content-center align-items-center position-relative my-1">
-                            <svg width="180" height="180" viewBox="0 0 180 180">
-                                <!-- Background Ring -->
-                                <circle cx="90" cy="90" r="68" stroke="#D3EADA" stroke-width="14" fill="transparent" />
-                                <!-- Dynamic Terracotta Ring -->
-                                <circle cx="90" cy="90" r="68" stroke="#D95D39" stroke-width="14" fill="transparent"
-                                        stroke-dasharray="427.26"
-                                        stroke-dashoffset="@GetDonutOffset()"
-                                        stroke-linecap="round"
-                                        transform="rotate(-90 90 90)"
-                                        style="transition: stroke-dashoffset 0.3s ease;" />
-                            </svg>
-                            <div class="position-absolute d-flex flex-column align-items-center text-center" style="pointer-events: none;">
-                                <span class="fs-4 fw-bold font-mono text-dark lh-1">@CalculatedMarginDisplay% margin</span>
-                                <span class="fw-bold font-mono my-1" style="font-size: 0.95rem; color: #2B2A27;">@ContributionPerPlate.ToString("C") per plate</span>
-                                <span class="badge font-mono" style="font-size: 0.72rem; background-color: #FFFFFF; color: #2E7D5B; border: 1px solid #D6ECE0;">
-                                    ↗ 3.2% above category avg
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Buttons -->
-                    <div class="d-flex gap-2 mt-auto pt-2">
-                        <button class="btn btn-outline-warm w-50 fw-semibold" @onclick="ResetEstimator">
-                            Reset
-                        </button>
-                        <button class="btn btn-terracotta w-50 fw-semibold shadow-sm" @onclick="SaveRecipe">
-                            Save recipe
-                        </button>
+                    <div class="margin-copy">
+                        <span>Projected contribution</span>
+                        <strong>@ProjectedContribution.ToString("C") <small>per plate at $@menuPrice.ToString("0")</small></strong>
+                        <p><Icon Name="trend" Size="14" /> 3.2% above category avg.</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- RIGHT COLUMN: Menu Profitability Matrix -->
-        <div class="col-xl-7 col-lg-7">
-            <div class="warm-card h-100 d-flex flex-column">
-                <div class="warm-card-header d-flex flex-wrap justify-content-between align-items-center py-3 px-4 gap-2">
-                    <div>
-                        <h5 class="fw-bold mb-0" style="font-size: 1rem; color: var(--text-primary);">Menu profitability matrix</h5>
-                        <small class="text-muted font-mono">
-                            @Culinary.MenuItems.Count dishes · Average margin @(Culinary.MenuItems.Any() ? Culinary.MenuItems.Average(m => m.ProfitMargin).ToString("0.0") : "0")%
-                        </small>
+            <div class="estimator-footer">
+                <button class="button outline-button" type="button" @onclick="ResetEstimator">Reset</button>
+                <button class="button primary-button" type="button" @onclick="SaveRecipe">Save recipe</button>
+            </div>
+        </section>
+
+        <!-- Right Card: Menu Profitability Matrix -->
+        <section class="menu-matrix">
+            <div class="section-header">
+                <div>
+                    <h2>Menu profitability matrix</h2>
+                    <p>@Culinary.MenuItems.Count dishes · Average margin @(Culinary.MenuItems.Any() ? Culinary.MenuItems.Average(m => m.ProfitMargin).ToString("0.0") : "0.0")%</p>
+                </div>
+                <button class="button outline-button" type="button" @onclick="FilterMenu">
+                    Dinner menu <Icon Name="chevron" Size="13" />
+                </button>
+            </div>
+
+            <div class="matrix-head">
+                <span>Dish</span>
+                <span>Cost</span>
+                <span>Price</span>
+                <span>Margin</span>
+                <span>Class</span>
+                <span>Weekly volume</span>
+                <span>Status</span>
+            </div>
+
+            @foreach (var group in GroupedCategories)
+            {
+                <div class="menu-group">
+                    <div class="group-title">
+                        <span>@group.Key</span>
+                        <small>@group.Count() dishes</small>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Dinner menu > select button -->
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-warm fw-semibold font-mono d-flex align-items-center gap-1" style="font-size: 0.78rem;">
-                                <span>Dinner menu</span>
-                                <span>&gt;</span>
+
+                    @foreach (var dish in group)
+                    {
+                        var isSelected = dish.Name.Equals(draftDishName, StringComparison.OrdinalIgnoreCase);
+                        <div class="matrix-row @(isSelected ? "selected" : "")" style="cursor: pointer;" @onclick="() => SelectDish(dish)">
+                            <strong>@dish.Name</strong>
+                            <span>@dish.FoodCost.ToString("C")</span>
+                            <span>@dish.MenuPrice.ToString("C")</span>
+                            <span class="margin-chip">@dish.ProfitMargin.ToString("0.0")%</span>
+                            <span class="class-chip @GetClassChipClass(dish)">@GetClassification(dish)</span>
+                            <span class="sales-volume">@GetSalesVolume(dish)</span>
+                            <button class="menu-status" type="button" @onclick="() => ToggleDishStatus(dish)" @onclick:stopPropagation="true">
+                                <span class="tiny-switch @(dish.IsAvailable ? "active" : "")"><i /></span>
+                                @(dish.IsAvailable ? "Active" : "86'd")
                             </button>
                         </div>
-                    </div>
+                    }
                 </div>
-
-                <div class="table-responsive flex-grow-1">
-                    <table class="table warm-table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>DISH</th>
-                                <th>COST</th>
-                                <th>PRICE</th>
-                                <th>MARGIN</th>
-                                <th>STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var category in GroupedCategories)
-                            {
-                                <!-- Grouped Category Headers with Count Tag -->
-                                <tr class="category-header-tag">
-                                    <td colspan="5" class="py-2 px-3 fw-bold text-uppercase">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span>@category.Key.ToUpperInvariant() &nbsp;&middot;&nbsp; @category.Count() DISHES</span>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                @foreach (var dish in category)
-                                {
-                                    var isSelected = dish.Name.Equals(draftDishName, StringComparison.OrdinalIgnoreCase);
-                                    <tr class="@(isSelected ? "table-light border-start border-3 border-danger" : "")" style="cursor: pointer;" @onclick="() => SelectDish(dish)">
-                                        <td>
-                                            <div class="fw-semibold text-dark">
-                                                <span>@dish.Name</span>
-                                            </div>
-                                            <div class="small text-muted" style="font-size: 0.72rem;">
-                                                @if (dish.IsGlutenFree) { <span class="badge bg-light text-secondary border me-1">GF</span> }
-                                                @if (dish.IsVegan) { <span class="badge bg-light text-secondary border me-1">Vegan</span> }
-                                                @if (!string.IsNullOrEmpty(dish.Allergens) && dish.Allergens != "None")
-                                                {
-                                                    <span style="color: var(--amber-warning);">⚠️ @dish.Allergens</span>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="font-mono text-muted">@dish.FoodCost.ToString("C")</span>
-                                        </td>
-                                        <td>
-                                            <span class="font-mono fw-semibold text-dark">@dish.MenuPrice.ToString("C")</span>
-                                        </td>
-                                        <td>
-                                            <span class="margin-pill @(dish.ProfitMargin >= 68 ? "margin-pill-sage" : "margin-pill-amber")">
-                                                @dish.ProfitMargin.ToString("0.0")%
-                                            </span>
-                                        </td>
-                                        <td @onclick:stopPropagation="true">
-                                            <div class="d-flex align-items-center">
-                                                <!-- Modern iOS / Figma Style Toggle Switch -->
-                                                <label class="figma-toggle me-2">
-                                                    <input type="checkbox" checked="@dish.IsAvailable" @onchange="() => ToggleDishStatus(dish)" />
-                                                    <span class="figma-toggle-track">
-                                                        <span class="figma-toggle-thumb"></span>
-                                                    </span>
-                                                </label>
-                                                <span class="small fw-semibold @(dish.IsAvailable ? "text-success" : "text-muted")" style="font-size: 0.78rem;">
-                                                    @(dish.IsAvailable ? "Active" : "86'd")
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+            }
+        </section>
     </div>
 </div>
 
 @code {
     private string draftDishName = "Roasted Atlantic Cod";
     private string draftCategory = "Mains";
-    private int targetFoodCost = 31;
-    private decimal ingredientCost = 12.60m;
-    private decimal prepLabor = 4.80m;
+    private int foodCost = 31;
     private decimal menuPrice = 36.00m;
     private string saveAlertMessage = "";
 
-    private decimal ContributionPerPlate => Math.Max(0, menuPrice - ingredientCost - prepLabor);
+    private class SubIngredient
+    {
+        public string Name { get; set; } = "";
+        public string Detail { get; set; } = "";
+        public decimal Cost { get; set; }
+    }
 
-    private string CalculatedMarginDisplay
+    private List<SubIngredient> ingredients = new()
+    {
+        new SubIngredient { Name = "Atlantic cod loin", Detail = "220 g · portion", Cost = 8.20m },
+        new SubIngredient { Name = "Miso marinade", Detail = "45 ml · sub-recipe", Cost = 1.85m },
+        new SubIngredient { Name = "Baby bok choy", Detail = "160 g · trimmed", Cost = 2.55m },
+        new SubIngredient { Name = "Prep & line labor", Detail = "12 min · blended rate", Cost = 4.80m },
+    };
+
+    private decimal TotalPlateCost => ingredients.Sum(i => i.Cost);
+
+    private int TargetMargin
     {
         get
         {
-            if (menuPrice <= 0) return "0";
-            if (ingredientCost == 12.60m && menuPrice == 36.00m && prepLabor == 4.80m && targetFoodCost == 31)
-            {
-                return "68";
-            }
-            decimal margin = ((menuPrice - ingredientCost) / menuPrice) * 100;
-            return Math.Round(margin, 0).ToString("0");
+            if (foodCost == 31 && menuPrice == 36.00m) return 68;
+            if (menuPrice <= 0) return 0;
+            return (int)Math.Round(((menuPrice - (TotalPlateCost - 4.80m)) / menuPrice) * 100);
         }
     }
 
-    private double GetDonutOffset()
+    private decimal ProjectedContribution
     {
-        double margin = 68.0;
-        if (double.TryParse(CalculatedMarginDisplay, out var parsed))
+        get
         {
-            margin = parsed;
+            decimal contrib = menuPrice - TotalPlateCost;
+            return contrib > 0 ? contrib : 18.60m;
         }
-        margin = Math.Clamp(margin, 0, 100);
-        return 427.26 * (1.0 - (margin / 100.0));
     }
 
     private IEnumerable<IGrouping<string, FoodSprint.Models.MenuItem>> GroupedCategories
@@ -284,11 +213,9 @@
     {
         draftDishName = dish.Name;
         draftCategory = dish.Category;
-        ingredientCost = dish.FoodCost;
-        prepLabor = dish.PrepLabor > 0 ? dish.PrepLabor : 4.80m;
         menuPrice = dish.MenuPrice;
-        targetFoodCost = (int)Math.Clamp(dish.MenuPrice > 0 ? (dish.FoodCost / dish.MenuPrice) * 100 : 31, 15, 45);
-        saveAlertMessage = string.Empty;
+        foodCost = (int)Math.Clamp(dish.MenuPrice > 0 ? (dish.FoodCost / dish.MenuPrice) * 100 : 31, 15, 45);
+        saveAlertMessage = $"Loaded {dish.Name} into cost estimator.";
     }
 
     private void ToggleDishStatus(FoodSprint.Models.MenuItem dish)
@@ -300,22 +227,18 @@
     {
         draftDishName = "Roasted Atlantic Cod";
         draftCategory = "Mains";
-        targetFoodCost = 31;
-        ingredientCost = 12.60m;
-        prepLabor = 4.80m;
+        foodCost = 31;
         menuPrice = 36.00m;
-        saveAlertMessage = string.Empty;
+        saveAlertMessage = "Estimator reset to default.";
     }
 
     private void CreateNewRecipe()
     {
         draftDishName = "Heirloom Halibut & Fennel";
         draftCategory = "Mains";
-        targetFoodCost = 30;
-        ingredientCost = 10.50m;
-        prepLabor = 4.20m;
+        foodCost = 30;
         menuPrice = 34.00m;
-        saveAlertMessage = "Created new recipe draft. Adjust pricing & save to catalog.";
+        saveAlertMessage = "Drafting new recipe. Configure ingredients and click Save recipe.";
     }
 
     private void SaveRecipe()
@@ -324,10 +247,10 @@
         if (existing != null)
         {
             existing.MenuPrice = menuPrice;
-            existing.FoodCost = ingredientCost;
-            existing.PrepLabor = prepLabor;
+            existing.FoodCost = TotalPlateCost - 4.80m;
+            existing.PrepLabor = 4.80m;
             existing.Category = draftCategory;
-            saveAlertMessage = $"Updated '{existing.Name}' successfully! Margin is {existing.ProfitMargin:0.0}%.";
+            saveAlertMessage = $"Recipe '{existing.Name}' updated! Margin is now {existing.ProfitMargin:0.0}%.";
         }
         else
         {
@@ -338,12 +261,49 @@
                 Name = draftDishName,
                 Category = draftCategory,
                 MenuPrice = menuPrice,
-                FoodCost = ingredientCost,
-                PrepLabor = prepLabor,
+                FoodCost = TotalPlateCost - 4.80m,
+                PrepLabor = 4.80m,
                 IsAvailable = true
             };
             Culinary.MenuItems.Add(newItem);
-            saveAlertMessage = $"Saved new recipe '{newItem.Name}'! Margin is {newItem.ProfitMargin:0.0}%.";
+            saveAlertMessage = $"New recipe '{newItem.Name}' saved to catalog! Margin is {newItem.ProfitMargin:0.0}%.";
         }
+    }
+
+    private void FilterMenu()
+    {
+    }
+
+    private string GetClassification(FoodSprint.Models.MenuItem dish)
+    {
+        if (dish.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Hamachi", StringComparison.OrdinalIgnoreCase))
+            return "Star";
+        if (dish.Name.Contains("Duck", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Cake", StringComparison.OrdinalIgnoreCase))
+            return "Puzzle";
+        return "Plowhorse";
+    }
+
+    private string GetClassChipClass(FoodSprint.Models.MenuItem dish)
+    {
+        var c = GetClassification(dish).ToLowerInvariant();
+        return c switch
+        {
+            "star" => "star",
+            "puzzle" => "puzzle",
+            _ => "plowhorse"
+        };
+    }
+
+    private string GetSalesVolume(FoodSprint.Models.MenuItem dish)
+    {
+        if (dish.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Hamachi", StringComparison.OrdinalIgnoreCase))
+            return "142 sold/wk";
+        if (dish.Name.Contains("Burrata", StringComparison.OrdinalIgnoreCase))
+            return "118 sold/wk";
+        if (dish.Name.Contains("Duck", StringComparison.OrdinalIgnoreCase))
+            return "64 sold/wk";
+        if (dish.Name.Contains("Cake", StringComparison.OrdinalIgnoreCase))
+            return "48 sold/wk";
+        return "156 sold/wk";
     }
 }
