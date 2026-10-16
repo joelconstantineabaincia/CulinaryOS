@@ -1,0 +1,85 @@
+<div class="sidebar-wrapper d-flex flex-column h-100">
+    <!-- Brand Header -->
+    <div class="sidebar-brand px-3 py-3 border-bottom border-secondary-subtle">
+        <a class="d-flex align-items-center text-decoration-none" href="">
+            <div class="brand-icon-box me-2 d-flex align-items-center justify-content-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2Z" fill="#FFFFFF"/>
+                    <path d="M9 21C9 21.55 9.45 22 10 22H14C14.55 22 15 21.55 15 21V20H9V21Z" fill="#FFFFFF" fill-opacity="0.8"/>
+                    <path d="M12 6C10.34 6 9 7.34 9 9H15C15 7.34 13.66 6 12 6Z" fill="#EA580C"/>
+                </svg>
+            </div>
+            <div class="d-flex flex-column">
+                <span class="brand-title">CulinaryOS</span>
+                <span class="brand-subtitle">KITCHEN OS</span>
+            </div>
+        </a>
+    </div>
+
+    <!-- Active Service Progress Box -->
+    <div class="px-3 pt-3 pb-2">
+        <div class="service-status-card p-2 rounded-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="service-label fw-bold">Dinner Service Active</span>
+                <span class="service-pill">Live</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center text-white-50 small mb-1">
+                <span class="small font-mono">Table load:</span>
+                <span class="small font-mono text-white fw-bold">18 / 24</span>
+            </div>
+            <div class="service-progress-track">
+                <div class="service-progress-fill" style="width: 75%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav Links -->
+    <div class="flex-grow-1 px-2 py-2">
+        <nav class="nav flex-column gap-1">
+            <NavLink class="nav-link custom-nav-item d-flex align-items-center px-3 py-2 rounded-2" href="" Match="NavLinkMatch.All">
+                <svg class="nav-icon me-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <line x1="9" y1="7" x2="15" y2="7"/>
+                    <line x1="9" y1="11" x2="13" y2="11"/>
+                </svg>
+                <span>Recipes & Margins</span>
+            </NavLink>
+
+            <NavLink class="nav-link custom-nav-item d-flex align-items-center px-3 py-2 rounded-2" href="kitchen">
+                <svg class="nav-icon me-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                    <path d="M7 8h10M7 12h6"/>
+                </svg>
+                <span>Live KDS Rail</span>
+            </NavLink>
+
+            <NavLink class="nav-link custom-nav-item d-flex align-items-center px-3 py-2 rounded-2" href="pantry">
+                <svg class="nav-icon me-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+                <span>Pantry & Par Levels</span>
+            </NavLink>
+        </nav>
+    </div>
+
+    <!-- Station 02 Footer -->
+    <div class="sidebar-footer p-3 border-top border-secondary-subtle">
+        <div class="station-badge-card d-flex align-items-center justify-content-between p-2 rounded-2">
+            <div class="d-flex align-items-center">
+                <div class="station-icon-chip me-2 d-flex align-items-center justify-content-center">
+                    <span class="station-number font-mono fw-bold">02</span>
+                </div>
+                <div class="d-flex flex-column">
+                    <span class="station-name fw-bold text-white">Station 02</span>
+                    <span class="station-sub text-white-50 small">Station Chef · Expo</span>
+                </div>
+            </div>
+            <span class="status-online-dot" title="Connected"></span>
+        </div>
+    </div>
+</div>

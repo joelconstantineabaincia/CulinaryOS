@@ -1,0 +1,119 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="page">
+    <aside class="sidebar">
+        <NavMenu />
+    </aside>
+
+    <main class="main-wrapper">
+        <!-- Top Bar -->
+        <header class="top-bar px-4 py-2 d-flex justify-content-between align-items-center">
+            <!-- Left: Breadcrumb / Page Context Name -->
+            <div class="d-flex align-items-center gap-2">
+                <span class="context-brand text-muted small fw-semibold">CulinaryOS</span>
+                <span class="context-slash text-muted small">/</span>
+                <span class="context-page fw-bold text-dark">@CurrentPageContext</span>
+            </div>
+
+            <!-- Right: Service Indicators & Controls -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- Avg Ticket Counter -->
+                <div class="metric-chip d-flex align-items-center px-2 py-1 rounded-2 border">
+                    <span class="metric-icon me-1">⏱️</span>
+                    <span class="metric-label text-muted small me-1">Avg Ticket:</span>
+                    <span class="metric-val font-mono fw-bold text-dark small">8m 45s</span>
+                </div>
+
+                <!-- On-target Service Indicator Badge -->
+                <div class="service-pace-badge d-flex align-items-center px-2 py-1 rounded-pill">
+                    <span class="live-dot live-dot-green me-1"></span>
+                    <span class="small fw-semibold text-emerald">Service: On Pace</span>
+                </div>
+
+                <!-- Shift Toggle -->
+                <div class="position-relative">
+                    <button class="btn btn-sm btn-light border shift-btn d-flex align-items-center gap-1 fw-semibold text-secondary" type="button" @onclick="ToggleShiftDropdown">
+                        <span>Dinner Service</span>
+                        <span class="dropdown-caret">▾</span>
+                    </button>
+                    @if (showShiftDropdown)
+                    {
+                        <div class="dropdown-menu show shadow border position-absolute mt-1 end-0 py-1" style="min-width: 170px; z-index: 1050;">
+                            <button class="dropdown-item small active fw-semibold" @onclick="() => showShiftDropdown = false">Dinner Service (Active)</button>
+                            <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Lunch Rush</button>
+                            <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Late Night / Bar</button>
+                        </div>
+                    }
+                </div>
+
+                <!-- Quick Filters Trigger -->
+                <button class="btn btn-sm btn-outline-secondary quick-filter-btn d-flex align-items-center gap-1 fw-semibold" @onclick="ToggleQuickFilters">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Quick filters</span>
+                </button>
+            </div>
+        </header>
+
+        @if (showQuickFiltersNotice)
+        {
+            <div class="quick-filters-banner px-4 py-2 bg-white border-bottom d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2 small">
+                    <span class="fw-bold text-secondary">Quick Filter Preset:</span>
+                    <span class="badge bg-light text-dark border">Allergens Only</span>
+                    <span class="badge bg-light text-dark border">Tickets > 10m</span>
+                    <span class="badge bg-light text-dark border">Margin &lt; 65%</span>
+                    <span class="badge bg-light text-dark border">Below Par Only</span>
+                </div>
+                <button type="button" class="btn-close btn-close-sm small" style="font-size: 0.65rem;" @onclick="() => showQuickFiltersNotice = false"></button>
+            </div>
+        }
+
+        <article class="content-body px-4 py-3">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    private bool showShiftDropdown = false;
+    private bool showQuickFiltersNotice = false;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string CurrentPageContext
+    {
+        get
+        {
+            var relative = Navigation.ToBaseRelativePath(Navigation.Uri).ToLowerInvariant();
+            if (relative.StartsWith("kitchen")) return "Live KDS Rail";
+            if (relative.StartsWith("pantry")) return "Pantry & Par Levels";
+            return "Recipes & Margins";
+        }
+    }
+
+    private void ToggleShiftDropdown() => showShiftDropdown = !showShiftDropdown;
+    private void ToggleQuickFilters() => showQuickFiltersNotice = !showQuickFiltersNotice;
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}

@@ -1,0 +1,139 @@
+.sidebar-wrapper {
+    background-color: #0D1B2A;
+    color: #F8FAFC;
+    height: 100%;
+}
+
+.sidebar-brand {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.brand-icon-box {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #F97316 0%, #E05A47 100%);
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.brand-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.brand-subtitle {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #F97316;
+}
+
+/* Service Status Card */
+.service-status-card {
+    background-color: #142436;
+    border: 1px solid #1E344D;
+}
+
+.service-label {
+    font-size: 0.78rem;
+    color: #E2E8F0;
+}
+
+.service-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #34D399;
+    padding: 0.1rem 0.45rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.service-progress-track {
+    width: 100%;
+    height: 6px;
+    background-color: #0D1B2A;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.service-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+    border-radius: 9999px;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+/* Nav Link Item */
+.custom-nav-item {
+    color: #94A3B8;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+}
+
+.custom-nav-item:hover {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.custom-nav-item.active {
+    color: #FFFFFF;
+    background-color: rgba(224, 90, 71, 0.18);
+    border-left: 3px solid #E05A47;
+}
+
+.custom-nav-item.active .nav-icon {
+    stroke: #E05A47;
+}
+
+.nav-icon {
+    transition: stroke 0.15s ease;
+}
+
+/* Station 02 Footer */
+.sidebar-footer {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: #0A1521;
+}
+
+.station-badge-card {
+    background-color: #142436;
+    border: 1px solid #1E344D;
+}
+
+.station-icon-chip {
+    width: 28px;
+    height: 28px;
+    background-color: #1E344D;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.station-number {
+    font-size: 0.75rem;
+    color: #E2E8F0;
+}
+
+.station-name {
+    font-size: 0.8rem;
+    line-height: 1.1;
+}
+
+.station-sub {
+    font-size: 0.68rem;
+}
+
+.status-online-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #10B981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #10B981;
+}
