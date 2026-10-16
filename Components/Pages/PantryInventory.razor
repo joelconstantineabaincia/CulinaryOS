@@ -1,0 +1,248 @@
+@page "/pantry"
+@rendermode InteractiveServer
+@inject FoodSprint.Services.CulinaryService Culinary
+
+<PageTitle>Fresh Pantry & Yield Tracker · CulinaryOS</PageTitle>
+
+<div class="container-fluid px-0">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+        <div>
+            <div class="kicker mb-1">INVENTORY · UPDATED 4 MIN AGO</div>
+            <h2 class="fw-bold text-dark mb-1">Fresh Pantry & Yield Tracker</h2>
+            <p class="text-muted small mb-0">Par levels, shelf-life monitoring, and automatic replenishment triggers.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-terracotta d-flex align-items-center gap-1 shadow-sm px-3 py-2" @onclick="OpenPurchaseOrderModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>New purchase order</span>
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(orderNotification))
+    {
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center py-2 px-3 mb-3 shadow-sm" role="alert">
+            <span class="me-2">📦</span>
+            <div class="small fw-semibold">@orderNotification</div>
+            <button type="button" class="btn-close btn-close-sm ms-auto" @onclick="() => orderNotification = string.Empty"></button>
+        </div>
+    }
+
+    <!-- 4 Metric Cards Row -->
+    <div class="row g-3 mb-4">
+        <!-- Card 1: Total Stock Par -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="culinary-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold">Total Stock Par</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle font-mono small">
+                        ↗ +4% vs last week
+                    </span>
+                </div>
+                <div class="fs-3 fw-bold font-mono text-dark mb-1">$12,450</div>
+                <div class="text-muted small">Current active pantry value</div>
+            </div>
+        </div>
+
+        <!-- Card 2: Spoilage Risk (48h) -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="culinary-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold">Spoilage Risk (48h)</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono small">
+                        8 items to review
+                    </span>
+                </div>
+                <div class="fs-3 fw-bold font-mono text-dark mb-1">$420</div>
+                <div class="text-muted small">At-risk ingredients &lt; 48 hours</div>
+            </div>
+        </div>
+
+        <!-- Card 3: Items Below Par -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="culinary-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold">Items Below Par</span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle font-mono small">
+                        Action recommended
+                    </span>
+                </div>
+                <div class="fs-3 fw-bold font-mono text-danger mb-1">3 items</div>
+                <div class="text-muted small">Thresholds breached today</div>
+            </div>
+        </div>
+
+        <!-- Card 4: Turnover Velocity -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="culinary-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold">Turnover Velocity</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle font-mono small">
+                        Healthy inventory
+                    </span>
+                </div>
+                <div class="fs-3 fw-bold font-mono text-dark mb-1">3.8x / mo</div>
+                <div class="text-muted small">Optimal velocity for seafood & produce</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ingredient Inventory Card & Table -->
+    <div class="culinary-card shadow-sm">
+        <div class="culinary-card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-0 fs-6">Ingredient inventory</h5>
+                <small class="text-muted">Par levels, real-time yield & reorder thresholds</small>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Search Filter -->
+                <div class="input-group input-group-sm" style="width: 220px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted">🔍</span>
+                    <input type="text" class="form-control border-start-0" placeholder="Search SKU or name..." @bind="searchQuery" @bind:event="oninput" />
+                </div>
+
+                <!-- Storage Location Dropdown -->
+                <select class="form-select form-select-sm" style="width: 170px;" @bind="selectedStorageFilter">
+                    <option value="All">All Storage Locations</option>
+                    <option value="Walk-in Cooler">Walk-in Cooler</option>
+                    <option value="Dry Larder">Dry Larder</option>
+                    <option value="Freezer">Freezer</option>
+                </select>
+
+                <!-- Simulate Prep Reduction Button -->
+                <button class="btn btn-outline-secondary btn-sm" @onclick="SimulatePrepReduction" title="Simulate 1 unit depletion across stock">
+                    Simulate Service Consumption
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table culinary-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>INGREDIENT & SKU</th>
+                        <th>STORAGE LOCATION</th>
+                        <th>PAR LEVEL & STOCK</th>
+                        <th>FRESHNESS</th>
+                        <th>UNIT COST</th>
+                        <th class="text-end">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in FilteredItems)
+                    {
+                        var isBelowPar = item.ParPercentage < 50;
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark font-mono">@item.Name</div>
+                                <span class="badge bg-light text-secondary border font-mono" style="font-size: 0.68rem;">
+                                    @(!string.IsNullOrEmpty(item.Sku) ? item.Sku : $"SKU-{item.Id:D3}")
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@item.StorageZone</span>
+                            </td>
+                            <td style="min-width: 200px;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="font-mono small fw-bold text-dark">
+                                        @item.CurrentStock @item.Unit
+                                    </span>
+                                    <span class="font-mono text-muted small" style="font-size: 0.72rem;">
+                                        @(item.ParPercentage)% of par
+                                    </span>
+                                </div>
+                                <div class="par-progress-track">
+                                    <div class="par-progress-fill @GetParBarClass(item.ParPercentage)" style="width: @(Math.Clamp(item.ParPercentage, 5, 100))%;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="freshness-badge @GetFreshnessClass(item.FreshnessVariant, item.FreshnessBadge)">
+                                    @item.FreshnessBadge
+                                </span>
+                            </td>
+                            <td>
+                                <span class="font-mono fw-semibold text-secondary">
+                                    @item.UnitCost.ToString("C") / @item.Unit
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <button class="btn btn-outline-terracotta btn-sm py-1 px-2.5 font-mono" @onclick="() => OrderItem(item)">
+                                        + Order
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm py-1 px-2" @onclick="() => Culinary.PantryStock.Remove(item)" title="Remove item">
+                                        ✕
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string searchQuery = "";
+    private string selectedStorageFilter = "All";
+    private string orderNotification = "";
+
+    private IEnumerable<FoodSprint.Models.PantryItem> FilteredItems
+    {
+        get
+        {
+            return Culinary.PantryStock.Where(item =>
+                (selectedStorageFilter == "All" || item.StorageZone.Equals(selectedStorageFilter, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(searchQuery) ||
+                 item.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                 item.Sku.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
+    private string GetParBarClass(int percentage)
+    {
+        if (percentage >= 70) return "bg-success";
+        if (percentage >= 45) return "bg-warning";
+        return "bg-danger";
+    }
+
+    private string GetFreshnessClass(string variant, string badgeText)
+    {
+        if (variant == "danger" || badgeText.Contains("18h") || badgeText.Contains("09h"))
+            return "freshness-pink";
+        if (variant == "warning" || badgeText.Contains("1d") || badgeText.Contains("2 day"))
+            return "freshness-yellow";
+        return "freshness-green";
+    }
+
+    private void OrderItem(FoodSprint.Models.PantryItem item)
+    {
+        item.CurrentStock += 10;
+        item.ParPercentage = Math.Min(100, item.ParPercentage + 25);
+        orderNotification = $"PO Placed: Ordered +10 {item.Unit} of {item.Name} ({item.Sku}). Par updated to {item.ParPercentage}%.";
+    }
+
+    private void OpenPurchaseOrderModal()
+    {
+        orderNotification = "Purchase Order #PO-9402 initialized with 3 critical low-par items.";
+    }
+
+    private void SimulatePrepReduction()
+    {
+        foreach (var item in Culinary.PantryStock)
+        {
+            if (item.CurrentStock > 0)
+            {
+                item.CurrentStock = Math.Max(0, Math.Round(item.CurrentStock - 1.0, 1));
+                item.ParPercentage = Math.Max(10, item.ParPercentage - 5);
+            }
+        }
+        orderNotification = "Simulated prep service depletion: -1 unit deducted across inventory.";
+    }
+}
