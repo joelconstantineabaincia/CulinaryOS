@@ -4,314 +4,237 @@
 
 <PageTitle>Live KDS Rail · CulinaryOS</PageTitle>
 
-<div class="container-fluid px-0">
-    <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-4 border-bottom gap-2">
+<div class="screen">
+    <!-- Page Heading -->
+    <div class="page-heading">
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="kicker-terracotta">DINNER SERVICE · LIVE</span>
-                <span class="text-muted small">&middot; Terminal Station 02</span>
-            </div>
-            <h2 class="serif-heading mb-1" style="font-size: 1.85rem;">Live KDS Rail</h2>
-            <p class="text-muted small mb-0">12 open tickets across 4 stations</p>
+            <div class="eyebrow">Dinner service · Live</div>
+            <h1>Live KDS Rail</h1>
+            <p>12 open tickets across 4 stations</p>
         </div>
-
-        <div class="d-flex flex-wrap align-items-center gap-3">
-            <!-- Legend Dots -->
-            <div class="d-flex align-items-center bg-white px-3 py-1.5 rounded-pill border" style="border-color: var(--border-subtle);">
-                <span class="d-inline-flex align-items-center small font-mono me-3">
-                    <span class="pulse-dot pulse-dot-sage me-1.5"></span>
-                    <span class="text-secondary" style="font-size: 0.78rem;">On target</span>
-                </span>
-                <span class="d-inline-flex align-items-center small font-mono me-3">
-                    <span style="width: 7px; height: 7px; border-radius: 50%; background-color: var(--amber-warning);" class="me-1.5"></span>
-                    <span class="text-secondary" style="font-size: 0.78rem;">Near par</span>
-                </span>
-                <span class="d-inline-flex align-items-center small font-mono">
-                    <span style="width: 7px; height: 7px; border-radius: 50%; background-color: var(--coral-critical);" class="me-1.5"></span>
-                    <span class="text-secondary" style="font-size: 0.78rem;">Over par</span>
-                </span>
+        <div class="heading-actions">
+            <div class="legend">
+                <span class="dot sage"></span> On target
+                <span class="dot amber"></span> Near par
+                <span class="dot coral"></span> Over par
             </div>
-
-            <!-- All Stations > Dropdown Filter -->
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-warm fw-semibold font-mono d-flex align-items-center gap-1.5" style="font-size: 0.82rem;" @onclick="ToggleStationDropdown">
-                    <span>@(selectedStationFilter == "All" ? "All stations" : selectedStationFilter)</span>
-                    <span class="text-muted">&gt;</span>
-                </button>
-                @if (showStationDropdown)
-                {
-                    <div class="dropdown-menu show shadow-sm border position-absolute mt-1 end-0 py-1" style="min-width: 160px; z-index: 1050; border-color: var(--border-subtle);">
-                        <button class="dropdown-item small @(selectedStationFilter == "All" ? "active" : "")" @onclick='() => SelectStation("All")'>All stations</button>
-                        <button class="dropdown-item small @(selectedStationFilter == "Garde Manger" ? "active" : "")" @onclick='() => SelectStation("Garde Manger")'>Garde Manger</button>
-                        <button class="dropdown-item small @(selectedStationFilter == "Hot Line" ? "active" : "")" @onclick='() => SelectStation("Hot Line")'>Hot Line</button>
-                        <button class="dropdown-item small @(selectedStationFilter == "Sauté" ? "active" : "")" @onclick='() => SelectStation("Sauté")'>Sauté</button>
-                    </div>
-                }
-            </div>
+            <button class="button outline-button" type="button" @onclick="ToggleStationFilter">
+                All stations <Icon Name="chevron" Size="14" />
+            </button>
         </div>
     </div>
 
-    @if (!string.IsNullOrEmpty(statusNotification))
-    {
-        <div class="alert alert-info alert-dismissible fade show d-flex align-items-center py-2 px-3 mb-3 shadow-sm border-0" style="background-color: #EBF5F0; color: #2E7D5B;" role="alert">
-            <span class="me-2">✓</span>
-            <div class="small fw-semibold">@statusNotification</div>
-            <button type="button" class="btn-close btn-close-sm ms-auto" @onclick="() => statusNotification = string.Empty"></button>
-        </div>
-    }
-
-    <!-- Ticket Multi-Column Grid -->
-    <div class="row g-4 mb-4">
-        @foreach (var ticket in DisplayTickets)
+    <!-- KDS Rail Grid -->
+    <div class="kds-grid">
+        @foreach (var ticket in Culinary.ActiveTickets)
         {
-            var isTable7 = ticket.TableNumber == 7 || (!string.IsNullOrEmpty(ticket.AllergyAlert) && ticket.AllergyAlert != "None");
-            var isOverPar = ticket.ElapsedMinutes >= 12;
-            var isNearPar = ticket.ElapsedMinutes >= 8 && ticket.ElapsedMinutes < 12;
+            var isCritical = ticket.TableNumber == 7 || (!string.IsNullOrEmpty(ticket.AllergyAlert) && ticket.AllergyAlert != "None");
+            var serverName = ticket.TableNumber == 4 ? "Chloe T." : ticket.TableNumber == 7 ? "Marcus L." : "Ana R.";
+            var orderNum = ticket.TableNumber == 4 ? "1084" : ticket.TableNumber == 7 ? "1091" : "1097";
+            var timerDisplay = !string.IsNullOrEmpty(ticket.ElapsedTimeString) ? ticket.ElapsedTimeString : $"{ticket.ElapsedMinutes:D2}:00";
 
-            <div class="col-xl-4 col-md-6">
-                <div class="warm-card h-100 d-flex flex-column shadow-sm @(isTable7 ? "border-coral" : "")" style="@(isTable7 ? "border-color: #FECDD3 !important;" : "")">
-                    @if (isTable7)
-                    {
-                        <!-- Top Soft Crimson Banner -->
-                        <div class="px-3 py-2 fw-bold d-flex align-items-center gap-1.5" style="background-color: #FFE4E6; color: #9F1239; border-top-left-radius: 9px; border-top-right-radius: 9px; border-bottom: 1px solid #FECDD3; font-size: 0.78rem; letter-spacing: 0.03em;">
-                            <span>⚠️</span>
-                            <span>CRITICAL ALLERGEN &nbsp;&middot;&nbsp; Severe Peanut Anaphylaxis</span>
-                        </div>
-                    }
-
-                    <!-- Ticket Header -->
-                    <div class="d-flex justify-content-between align-items-center py-3 px-3.5 border-bottom" style="border-color: var(--border-subtle);">
-                        <div>
-                            <div class="d-flex align-items-baseline gap-2">
-                                <span class="serif-heading fs-4 fw-bold mb-0">Table @ticket.TableNumber</span>
-                                <span class="badge font-mono" style="background-color: #F5F4EF; color: #787670; border: 1px solid #EAE9E4; font-size: 0.72rem;">
-                                    @ticket.Guests Guests
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-1.5 mt-1">
-                                <span class="badge font-mono" style="background-color: #F8F8F5; color: #52504B; border: 1px solid #EAE9E4; font-size: 0.72rem;">
-                                    @ticket.Station
-                                </span>
-                                @if (ticket.IsRush)
-                                {
-                                    <span class="badge font-mono" style="background-color: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; font-size: 0.7rem;">
-                                        ⚡ RUSH
-                                    </span>
-                                }
-                            </div>
-                        </div>
-
-                        <!-- Elapsed Time Pill -->
-                        <div class="text-end">
-                            @if (isTable7)
-                            {
-                                <span class="badge font-mono px-2.5 py-1.5" style="background-color: #FFE4E6; color: #9F1239; border: 1px solid #FECDD3; font-size: 0.82rem;">
-                                    14:18 &nbsp;Exceeding Par
-                                </span>
-                            }
-                            else if (ticket.TableNumber == 12 || isNearPar)
-                            {
-                                <span class="badge font-mono px-2.5 py-1.5" style="background-color: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; font-size: 0.82rem;">
-                                    09:42
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge font-mono px-2.5 py-1.5" style="background-color: #EBF5F0; color: #2E7D5B; border: 1px solid #D6ECE0; font-size: 0.82rem;">
-                                    06:15
-                                </span>
-                            }
-                        </div>
+            <article class="ticket @(isCritical ? "critical-ticket" : "")">
+                @if (isCritical)
+                {
+                    <div class="allergen-banner">
+                        <Icon Name="alert" Size="17" />
+                        <strong>CRITICAL ALLERGEN</strong>
+                        <span>Severe Peanut Anaphylaxis</span>
                     </div>
+                }
 
-                    <!-- Order Items List with Rounded Linen Squares -->
-                    <div class="card-body p-3.5 d-flex flex-column flex-grow-1">
-                        <ul class="list-unstyled mb-4 flex-grow-1">
-                            @if (ticket.TableNumber == 4)
+                <div class="ticket-header">
+                    <div>
+                        <div class="table-title">Table @ticket.TableNumber</div>
+                        <div class="guest-count"><Icon Name="users" Size="14" /> @ticket.Guests guests</div>
+                        <div class="server-meta">Server: @serverName &middot; Dine-in #@orderNum</div>
+                    </div>
+                    <div class="ticket-meta">
+                        <span class="station-pill">@ticket.Station</span>
+                        <span class="timer-pill @(isCritical ? "late" : "")">
+                            @timerDisplay
+                            @if (isCritical)
                             {
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">2</span>
-                                        <span class="fw-semibold text-dark">Hamachi Crudo</span>
-                                    </div>
-                                    <div class="text-muted small fst-italic ms-4 ps-1" style="font-size: 0.78rem;">
-                                        Extra citrus
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">Little Gem Salad</span>
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">Burrata & Persimmon</span>
-                                    </div>
-                                </li>
+                                <small>Exceeding Par</small>
                             }
-                            else if (ticket.TableNumber == 7)
-                            {
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            <span class="qty-badge">1</span>
-                                            <span class="fw-semibold text-dark">Roasted Atlantic Cod</span>
-                                        </div>
-                                        <span class="badge font-mono" style="background-color: #FFE4E6; color: #9F1239; border: 1px solid #FECDD3; font-size: 0.68rem;">
-                                            NO PEANUT
-                                        </span>
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            <span class="qty-badge">1</span>
-                                            <span class="fw-semibold text-dark">Charred Broccolini</span>
-                                        </div>
-                                        <span class="badge font-mono" style="background-color: #FFE4E6; color: #9F1239; border: 1px solid #FECDD3; font-size: 0.68rem;">
-                                            ALLERGY
-                                        </span>
-                                    </div>
-                                    <div class="small fw-semibold ms-4 ps-1" style="color: #9F1239; font-size: 0.75rem;">
-                                        ↳ Clean pan &middot; fresh gloves
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">Carnaroli Risotto</span>
-                                    </div>
-                                    <div class="small text-muted ms-4 ps-1" style="font-size: 0.75rem;">
-                                        ↳ No shared garnish
-                                    </div>
-                                </li>
-                            }
-                            else if (ticket.TableNumber == 12)
-                            {
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">Dry-Aged Duck</span>
-                                    </div>
-                                    <div class="text-muted small fst-italic ms-4 ps-1" style="font-size: 0.78rem;">
-                                        Medium rare
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">Wild Mushroom Risotto</span>
-                                    </div>
-                                </li>
-                                <li class="py-2 border-bottom" style="border-color: #F4F3EE;">
-                                    <div class="d-flex align-items-center">
-                                        <span class="qty-badge">2</span>
-                                        <span class="fw-semibold text-dark">Warm Olive Cake</span>
-                                    </div>
-                                </li>
-                            }
-                            else
-                            {
-                                @foreach (var item in ticket.Items)
-                                {
-                                    <li class="py-2 border-bottom d-flex align-items-center" style="border-color: #F4F3EE;">
-                                        <span class="qty-badge">1</span>
-                                        <span class="fw-semibold text-dark">@item</span>
-                                    </li>
-                                }
-                            }
-                        </ul>
-
-                        <!-- Bottom Action Buttons -->
-                        <div class="d-flex gap-2 mt-auto pt-2 border-top" style="border-color: var(--border-subtle);">
-                            @if (isTable7)
-                            {
-                                <button class="btn btn-soft-pink w-50 py-2 d-flex align-items-center justify-content-center" @onclick="() => CallExpo(ticket)">
-                                    <span>Call Expo</span>
-                                </button>
-                                <button class="btn btn-terracotta w-50 py-2 d-flex align-items-center justify-content-center" @onclick="() => MarkPlated(ticket)">
-                                    <span>✓ Mark Plated</span>
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-warm-amber w-50 py-2 d-flex align-items-center justify-content-center" @onclick="() => ToggleRush(ticket)">
-                                    <span>Rush</span>
-                                </button>
-                                <button class="btn btn-warm-terracotta-outline w-50 py-2 d-flex align-items-center justify-content-center" @onclick="() => MarkPlated(ticket)">
-                                    <span>✓ Mark Plated</span>
-                                </button>
-                            }
-                        </div>
+                        </span>
                     </div>
                 </div>
-            </div>
+
+                <div class="ticket-items">
+                    @if (ticket.TableNumber == 4)
+                    {
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 1 (Apps)</span>
+                                <strong>Plated</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">2</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Hamachi Crudo</div>
+                                    <div class="modifier">Extra citrus</div>
+                                </div>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Little Gem Salad</div>
+                                    <div class="modifier">No scallions</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 2 (Mains)</span>
+                                <strong>Fire</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Roasted Atlantic Cod</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ticket.TableNumber == 7)
+                    {
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 1 (Apps)</span>
+                                <strong>Plated</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">
+                                        Charred Broccolini
+                                        <span class="allergy-chip">ALLERGY</span>
+                                    </div>
+                                    <div class="modifier">Clean pan &middot; fresh gloves</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 2 (Mains)</span>
+                                <strong>Fire</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">
+                                        Roasted Atlantic Cod
+                                        <span class="allergy-chip">NO PEANUT</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Carnaroli Risotto</div>
+                                    <div class="modifier">No shared garnish</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ticket.TableNumber == 12)
+                    {
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 1 (Apps)</span>
+                                <strong>Plated</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Burrata & Persimmon</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>Course 2 (Mains)</span>
+                                <strong>Fire</strong>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Dry-Aged Duck</div>
+                                    <div class="modifier">Medium rare</div>
+                                </div>
+                            </div>
+                            <div class="order-row">
+                                <span class="quantity">1</span>
+                                <div class="order-copy">
+                                    <div class="order-name">Wild Mushroom Risotto</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="course-group">
+                            <div class="course-header">
+                                <span>@ticket.ActiveCourse</span>
+                                <strong>@ticket.Status</strong>
+                            </div>
+                            @foreach (var item in ticket.Items)
+                            {
+                                <div class="order-row">
+                                    <span class="quantity">1</span>
+                                    <div class="order-copy">
+                                        <div class="order-name">@item</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="ticket-actions">
+                    <button class="button expedite-button" type="button" @onclick="() => ToggleRush(ticket)">
+                        <Icon Name="bolt" Size="15" /> @(ticket.IsRush ? "Expedited" : "Expedite")
+                    </button>
+                    <button class="button primary-button" type="button" @onclick="() => CompleteTicket(ticket)">
+                        <Icon Name="check" Size="16" /> @(isCritical ? "Complete" : "Bump Ticket")
+                    </button>
+                </div>
+            </article>
         }
     </div>
 
-    <!-- Bottom Banner: Clean white card -->
-    <div class="warm-card p-3.5 d-flex flex-wrap justify-content-between align-items-center gap-2 shadow-sm">
-        <div class="d-flex align-items-center gap-2">
-            <span style="color: var(--brand-terracotta); font-size: 1.1rem;">✦</span>
-            <span class="fw-semibold text-dark">
-                Service insight: <span class="text-muted fw-normal">Garde Manger is clearing tickets 1m 12s faster than average.</span>
-            </span>
+    <!-- Bottom Rail Summary -->
+    <div class="rail-summary">
+        <div>
+            <Icon Name="sparkle" Size="18" />
+            <span><strong>Service insight</strong> Garde Manger is clearing tickets 1m 12s faster than average.</span>
         </div>
-        <a href="javascript:void(0)" class="fw-semibold text-decoration-none d-flex align-items-center gap-1 font-mono" style="color: var(--brand-terracotta); font-size: 0.85rem;" @onclick="ShowAnalytics">
-            <span>View station analytics &gt;</span>
-        </a>
+        <button type="button" @onclick="ViewAnalytics">
+            View station analytics <Icon Name="chevron" Size="14" />
+        </button>
     </div>
 </div>
 
 @code {
-    private string selectedStationFilter = "All";
-    private bool showStationDropdown = false;
-    private string statusNotification = "";
-
-    private IEnumerable<FoodSprint.Models.KitchenTicket> DisplayTickets
-    {
-        get
-        {
-            if (selectedStationFilter == "All")
-                return Culinary.ActiveTickets;
-
-            return Culinary.ActiveTickets.Where(t => t.Station.Equals(selectedStationFilter, StringComparison.OrdinalIgnoreCase));
-        }
-    }
-
-    private void ToggleStationDropdown() => showStationDropdown = !showStationDropdown;
-
-    private void SelectStation(string station)
-    {
-        selectedStationFilter = station;
-        showStationDropdown = false;
-    }
-
     private void ToggleRush(FoodSprint.Models.KitchenTicket ticket)
     {
         ticket.IsRush = !ticket.IsRush;
-        statusNotification = ticket.IsRush
-            ? $"Table {ticket.TableNumber} expedited as RUSH priority."
-            : $"Table {ticket.TableNumber} returned to standard pace.";
     }
 
-    private void CallExpo(FoodSprint.Models.KitchenTicket ticket)
-    {
-        ticket.ExpoCalled = true;
-        statusNotification = $"🚨 Expeditor summoned for Table {ticket.TableNumber} (Peanut Anaphylaxis).";
-    }
-
-    private void MarkPlated(FoodSprint.Models.KitchenTicket ticket)
+    private void CompleteTicket(FoodSprint.Models.KitchenTicket ticket)
     {
         ticket.Status = "Plated";
-        statusNotification = $"Table {ticket.TableNumber} marked as PLATED.";
     }
 
-    private void ShowAnalytics()
+    private void ToggleStationFilter()
     {
-        statusNotification = "Station analytics: Garde Manger 05:22/ticket · Hot Line 08:45/ticket · Sauté 07:18/ticket.";
+    }
+
+    private void ViewAnalytics()
+    {
     }
 }
