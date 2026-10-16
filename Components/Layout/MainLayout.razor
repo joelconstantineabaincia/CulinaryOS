@@ -2,80 +2,49 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<div class="page-shell">
-    <aside class="sidebar-shell">
-        <NavMenu />
-    </aside>
-
-    <main class="main-shell">
-        <!-- Top Bar -->
-        <header class="top-bar-shell px-4 py-2 d-flex justify-content-between align-items-center">
-            <!-- Left: Breadcrumb hierarchy -->
-            <div class="d-flex align-items-center gap-2">
-                <span class="crumb-brand">CulinaryOS</span>
-                <span class="crumb-separator">/</span>
-                <span class="crumb-current">@CurrentPageContext</span>
+<div class="app-shell">
+    <NavMenu />
+    <div class="main-column">
+        <header class="topbar">
+            <div class="breadcrumbs">
+                <span>CulinaryOS</span>
+                <span class="slash">/</span>
+                <strong>@PageEyebrow</strong>
             </div>
-
-            <!-- Center / Right: Indicators & Controls -->
-            <div class="d-flex align-items-center gap-3">
-                <!-- Avg Ticket Counter -->
-                <div class="ticket-counter d-flex align-items-center px-2.5 py-1 rounded-2">
-                    <span class="ticket-icon me-1.5">⏱️</span>
-                    <span class="ticket-label text-muted small me-1">Avg Ticket:</span>
-                    <span class="ticket-value font-mono fw-bold small">8m 45s</span>
-                </div>
-
-                <!-- Soft Sage Service Pace Pill -->
-                <div class="service-pace-pill d-flex align-items-center px-2.5 py-1">
-                    <span class="pulse-dot pulse-dot-sage me-1.5"></span>
-                    <span class="small fw-semibold">Service: On Pace</span>
-                </div>
-
-                <!-- Shift Dropdown -->
-                <div class="position-relative">
-                    <button class="btn btn-sm btn-outline-warm shift-dropdown-btn d-flex align-items-center gap-1.5" type="button" @onclick="ToggleShiftDropdown">
-                        <span>Dinner Service</span>
-                        <span class="dropdown-arrow">▾</span>
-                    </button>
-                    @if (showShiftDropdown)
+            <div class="pace">
+                <div><Icon Name="clock" Size="15" /> Avg Ticket: <strong>8m 45s</strong></div>
+                <span class="sage-pill"><span class="status-dot"></span> Service: On Pace</span>
+            </div>
+            <div class="top-actions">
+                <button class="search-pill" type="button" @onclick="FocusSearch">
+                    <Icon Name="search" Size="15" />
+                    <span>Quick search</span>
+                    <kbd>⌘K</kbd>
+                </button>
+                <button class="notification-button" aria-label="Notifications, 3 unread" type="button" @onclick="ToggleNotification">
+                    <Icon Name="bell" Size="17" />
+                    @if (hasUnread)
                     {
-                        <div class="dropdown-menu show shadow-sm border position-absolute mt-1 end-0 py-1" style="min-width: 175px; z-index: 1050; border-color: var(--border-subtle);">
-                            <button class="dropdown-item small active fw-semibold" @onclick="() => showShiftDropdown = false">Dinner Service (Active)</button>
-                            <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Lunch Rush</button>
-                            <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Late Night / Bar</button>
-                        </div>
+                        <span></span>
                     }
-                </div>
-
-                <!-- Quick Filters Trigger -->
-                <button class="btn btn-sm btn-outline-warm quick-filters-btn d-flex align-items-center gap-1.5" @onclick="ToggleQuickFilters">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>Quick filters</span>
+                </button>
+                <span class="shift-text">Shift</span>
+                <button aria-label="Toggle shift"
+                        aria-pressed="@onShift"
+                        class="switch @(onShift ? "on" : "")"
+                        @onclick="() => onShift = !onShift"
+                        type="button">
+                    <span></span>
+                </button>
+                <button class="filter-button" type="button" @onclick="ToggleFilters">
+                    <Icon Name="sliders" Size="16" /> Quick filters
                 </button>
             </div>
         </header>
-
-        @if (showQuickFiltersNotice)
-        {
-            <div class="quick-filters-subbar px-4 py-2 border-bottom d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2 small">
-                    <span class="fw-semibold text-muted">Quick Filter Presets:</span>
-                    <span class="badge bg-light text-dark border">Allergens Only</span>
-                    <span class="badge bg-light text-dark border">Tickets > 10m</span>
-                    <span class="badge bg-light text-dark border">Margin &lt; 65%</span>
-                    <span class="badge bg-light text-dark border">Below Par Only</span>
-                </div>
-                <button type="button" class="btn-close btn-close-sm small" style="font-size: 0.65rem;" @onclick="() => showQuickFiltersNotice = false"></button>
-            </div>
-        }
-
-        <article class="content-canvas px-4 py-3">
+        <main>
             @Body
-        </article>
-    </main>
+        </main>
+    </div>
 </div>
 
 <div id="blazor-error-ui">
@@ -85,8 +54,9 @@
 </div>
 
 @code {
-    private bool showShiftDropdown = false;
-    private bool showQuickFiltersNotice = false;
+    private bool onShift = true;
+    private bool hasUnread = true;
+    private bool showFilters = false;
 
     protected override void OnInitialized()
     {
@@ -98,19 +68,30 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private string CurrentPageContext
+    private string PageEyebrow
     {
         get
         {
             var relative = Navigation.ToBaseRelativePath(Navigation.Uri).ToLowerInvariant();
-            if (relative.StartsWith("kitchen")) return "Live KDS Rail";
-            if (relative.StartsWith("pantry")) return "Pantry & Par Levels";
-            return "Recipes & Margins";
+            if (relative.StartsWith("kitchen")) return "Kitchen Display";
+            if (relative.StartsWith("pantry")) return "Inventory Control";
+            return "Menu Intelligence";
         }
     }
 
-    private void ToggleShiftDropdown() => showShiftDropdown = !showShiftDropdown;
-    private void ToggleQuickFilters() => showQuickFiltersNotice = !showQuickFiltersNotice;
+    private void FocusSearch()
+    {
+    }
+
+    private void ToggleNotification()
+    {
+        hasUnread = !hasUnread;
+    }
+
+    private void ToggleFilters()
+    {
+        showFilters = !showFilters;
+    }
 
     public void Dispose()
     {

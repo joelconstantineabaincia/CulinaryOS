@@ -1,86 +1,48 @@
-<div class="sidebar-container d-flex flex-column h-100">
-    <!-- Brand Header -->
-    <div class="sidebar-header px-3 py-3 border-bottom">
-        <a class="d-flex align-items-center text-decoration-none" href="">
-            <div class="brand-icon-box me-2.5 d-flex align-items-center justify-content-center">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2Z" fill="#FFFFFF"/>
-                    <path d="M9 21C9 21.55 9.45 22 10 22H14C14.55 22 15 21.55 15 21V20H9V21Z" fill="#FFFFFF" fill-opacity="0.85"/>
-                    <path d="M12 6C10.34 6 9 7.34 9 9H15C15 7.34 13.66 6 12 6Z" fill="#D95D39"/>
-                </svg>
-            </div>
-            <div class="d-flex flex-column">
-                <span class="brand-title serif-heading">CulinaryOS</span>
-                <span class="brand-subtitle">KITCHEN OS</span>
-            </div>
-        </a>
-    </div>
-
-    <!-- Shift Status Card -->
-    <div class="px-3 pt-3 pb-2">
-        <div class="shift-status-card p-2.5">
-            <div class="d-flex align-items-center justify-content-between mb-1.5">
-                <div class="d-flex align-items-center gap-1.5">
-                    <span class="pulse-dot pulse-dot-sage"></span>
-                    <span class="shift-title fw-semibold">Dinner Service Active</span>
-                </div>
-                <span class="shift-live-tag">Live</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="shift-metric-label font-mono">Table load:</span>
-                <span class="shift-metric-val font-mono fw-bold">18 / 24</span>
-            </div>
-            <div class="shift-progress-track">
-                <div class="shift-progress-fill" style="width: 75%;"></div>
-            </div>
+<aside class="sidebar">
+    <div class="brand">
+        <div class="brand-mark"><Icon Name="brand" Size="22" /></div>
+        <div>
+            <div class="brand-name">CulinaryOS</div>
+            <div class="brand-subtitle">Kitchen & Dining Hub</div>
         </div>
     </div>
 
-    <!-- Navigation Links -->
-    <div class="flex-grow-1 px-2.5 py-2">
-        <nav class="nav flex-column gap-1.5">
-            <NavLink class="nav-link warm-nav-link d-flex align-items-center px-3 py-2.5" href="" Match="NavLinkMatch.All">
-                <span class="nav-emoji me-2">🍽️</span>
-                <span class="nav-text">Recipes & Margins</span>
-            </NavLink>
-
-            <NavLink class="nav-link warm-nav-link d-flex align-items-center px-3 py-2.5" href="kitchen">
-                <span class="nav-emoji me-2">🔥</span>
-                <span class="nav-text">Live KDS Rail</span>
-            </NavLink>
-
-            <NavLink class="nav-link warm-nav-link d-flex align-items-center px-3 py-2.5" href="pantry">
-                <span class="nav-emoji me-2">🥬</span>
-                <span class="nav-text">Pantry & Par Levels</span>
-            </NavLink>
-        </nav>
-    </div>
-
-    <!-- Bottom Station Profile Footer -->
-    <div class="sidebar-footer p-3 border-top">
-        <div class="station-profile-card d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2.5">
-                <div class="avatar-circle font-mono fw-bold">
-                    MP
-                </div>
-                <div class="d-flex flex-column">
-                    <span class="station-title fw-semibold">Station 02</span>
-                    <span class="station-role text-muted">Expo Lead</span>
-                </div>
-            </div>
-            <button class="btn btn-sm btn-link p-0 text-muted slider-icon-btn" title="Station Settings">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="4" y1="21" x2="4" y2="14"></line>
-                    <line x1="4" y1="10" x2="4" y2="3"></line>
-                    <line x1="12" y1="21" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12" y2="3"></line>
-                    <line x1="20" y1="21" x2="20" y2="16"></line>
-                    <line x1="20" y1="12" x2="20" y2="3"></line>
-                    <line x1="1" y1="14" x2="7" y2="14"></line>
-                    <line x1="9" y1="8" x2="15" y2="8"></line>
-                    <line x1="17" y1="16" x2="23" y2="16"></line>
-                </svg>
-            </button>
+    <div class="shift-card">
+        <div class="shift-label"><span class="status-dot"></span> Dinner Service Active</div>
+        <div class="shift-load">
+            <span>Table load</span>
+            <strong>18 / 24</strong>
         </div>
+        <div class="mini-progress"><span></span></div>
     </div>
-</div>
+
+    <nav class="nav" aria-label="Primary navigation">
+        <div class="nav-section">Workspace</div>
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+            <Icon Name="recipe" />
+            <span>Recipes & Margins</span>
+            <Icon Name="chevron" Size="14" />
+        </NavLink>
+        <NavLink class="nav-item" href="kitchen">
+            <Icon Name="rail" />
+            <span>Live KDS Rail</span>
+            <Icon Name="chevron" Size="14" />
+        </NavLink>
+        <NavLink class="nav-item" href="pantry">
+            <Icon Name="pantry" />
+            <span>Pantry & Par Levels</span>
+            <Icon Name="chevron" Size="14" />
+        </NavLink>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="avatar">MP</div>
+        <div class="profile-copy">
+            <strong>Station 02</strong>
+            <span>Expo Lead</span>
+        </div>
+        <button class="icon-button" aria-label="Station settings" type="button">
+            <Icon Name="sliders" Size="17" />
+        </button>
+    </div>
+</aside>
