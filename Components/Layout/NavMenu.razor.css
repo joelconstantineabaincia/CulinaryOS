@@ -1,26 +1,25 @@
-.sidebar-wrapper {
-    background-color: #0D1B2A;
-    color: #F8FAFC;
+.sidebar-container {
+    background-color: var(--sidebar-bg, #F5F4EF);
+    border-right: 1px solid var(--border-subtle, #EAE9E4);
     height: 100%;
 }
 
-.sidebar-brand {
-    border-color: rgba(255, 255, 255, 0.08) !important;
+.sidebar-header {
+    border-color: var(--border-subtle, #EAE9E4) !important;
 }
 
 .brand-icon-box {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #F97316 0%, #E05A47 100%);
-    border-radius: 9px;
-    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #D95D39 0%, #C24E2B 100%);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(217, 93, 57, 0.25);
 }
 
 .brand-title {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    letter-spacing: -0.02em;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary, #2B2A27);
     line-height: 1.1;
 }
 
@@ -28,112 +27,121 @@
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.12em;
-    color: #F97316;
+    color: var(--text-muted, #787670);
+    margin-top: 1px;
 }
 
-/* Service Status Card */
-.service-status-card {
-    background-color: #142436;
-    border: 1px solid #1E344D;
+/* Shift Status Card */
+.shift-status-card {
+    background-color: #ECEBE5;
+    border: 1px solid #E2E1DA;
+    border-radius: 8px;
 }
 
-.service-label {
+.shift-title {
     font-size: 0.78rem;
-    color: #E2E8F0;
+    color: var(--text-primary, #2B2A27);
 }
 
-.service-pill {
+.shift-live-tag {
     font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    background-color: rgba(16, 185, 129, 0.2);
-    color: #34D399;
-    padding: 0.1rem 0.45rem;
+    background-color: #FFFFFF;
+    color: var(--sage-green, #2E7D5B);
+    padding: 0.08rem 0.4rem;
     border-radius: 9999px;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    border: 1px solid #D6ECE0;
 }
 
-.service-progress-track {
+.shift-metric-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #787670);
+}
+
+.shift-metric-val {
+    font-size: 0.75rem;
+    color: var(--text-primary, #2B2A27);
+}
+
+.shift-progress-track {
     width: 100%;
-    height: 6px;
-    background-color: #0D1B2A;
+    height: 4px;
+    background-color: #DCD9D0;
     border-radius: 9999px;
     overflow: hidden;
 }
 
-.service-progress-fill {
+.shift-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+    background-color: var(--sage-green, #2E7D5B);
     border-radius: 9999px;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
 }
 
-/* Nav Link Item */
-.custom-nav-item {
-    color: #94A3B8;
+/* Navigation Links */
+.warm-nav-link {
+    color: var(--text-muted, #787670);
     font-size: 0.88rem;
-    font-weight: 600;
+    font-weight: 500;
+    border-radius: 8px;
+    border-left: 2px solid transparent;
     transition: all 0.15s ease-in-out;
     text-decoration: none;
-    border-left: 3px solid transparent;
 }
 
-.custom-nav-item:hover {
-    color: #FFFFFF;
-    background-color: rgba(255, 255, 255, 0.05);
+.warm-nav-link:hover {
+    color: var(--text-primary, #2B2A27);
+    background-color: rgba(236, 235, 229, 0.6);
 }
 
-.custom-nav-item.active {
-    color: #FFFFFF;
-    background-color: rgba(224, 90, 71, 0.18);
-    border-left: 3px solid #E05A47;
+.warm-nav-link.active {
+    background-color: #FFFFFF !important;
+    color: var(--text-primary, #2B2A27) !important;
+    font-weight: 600;
+    border-left: 2px solid var(--brand-terracotta, #D95D39);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.custom-nav-item.active .nav-icon {
-    stroke: #E05A47;
+.nav-emoji {
+    font-size: 1rem;
+    line-height: 1;
 }
 
-.nav-icon {
-    transition: stroke 0.15s ease;
-}
-
-/* Station 02 Footer */
+/* Station Profile Footer */
 .sidebar-footer {
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    background-color: #0A1521;
+    border-color: var(--border-subtle, #EAE9E4) !important;
+    background-color: var(--sidebar-bg, #F5F4EF);
 }
 
-.station-badge-card {
-    background-color: #142436;
-    border: 1px solid #1E344D;
-}
-
-.station-icon-chip {
-    width: 28px;
-    height: 28px;
-    background-color: #1E344D;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.station-number {
-    font-size: 0.75rem;
-    color: #E2E8F0;
-}
-
-.station-name {
-    font-size: 0.8rem;
-    line-height: 1.1;
-}
-
-.station-sub {
-    font-size: 0.68rem;
-}
-
-.status-online-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #10B981;
+.avatar-circle {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    box-shadow: 0 0 6px #10B981;
+    background-color: #E5E4DE;
+    color: var(--text-primary, #2B2A27);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    border: 1px solid #DAD9D2;
+}
+
+.station-title {
+    font-size: 0.82rem;
+    line-height: 1.1;
+    color: var(--text-primary, #2B2A27);
+}
+
+.station-role {
+    font-size: 0.72rem;
+    color: var(--text-muted, #787670);
+}
+
+.slider-icon-btn {
+    color: var(--text-muted, #787670);
+    text-decoration: none;
+}
+
+.slider-icon-btn:hover {
+    color: var(--text-primary, #2B2A27);
 }

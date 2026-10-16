@@ -2,45 +2,45 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<div class="page">
-    <aside class="sidebar">
+<div class="page-shell">
+    <aside class="sidebar-shell">
         <NavMenu />
     </aside>
 
-    <main class="main-wrapper">
+    <main class="main-shell">
         <!-- Top Bar -->
-        <header class="top-bar px-4 py-2 d-flex justify-content-between align-items-center">
-            <!-- Left: Breadcrumb / Page Context Name -->
+        <header class="top-bar-shell px-4 py-2 d-flex justify-content-between align-items-center">
+            <!-- Left: Breadcrumb hierarchy -->
             <div class="d-flex align-items-center gap-2">
-                <span class="context-brand text-muted small fw-semibold">CulinaryOS</span>
-                <span class="context-slash text-muted small">/</span>
-                <span class="context-page fw-bold text-dark">@CurrentPageContext</span>
+                <span class="crumb-brand">CulinaryOS</span>
+                <span class="crumb-separator">/</span>
+                <span class="crumb-current">@CurrentPageContext</span>
             </div>
 
-            <!-- Right: Service Indicators & Controls -->
+            <!-- Center / Right: Indicators & Controls -->
             <div class="d-flex align-items-center gap-3">
                 <!-- Avg Ticket Counter -->
-                <div class="metric-chip d-flex align-items-center px-2 py-1 rounded-2 border">
-                    <span class="metric-icon me-1">⏱️</span>
-                    <span class="metric-label text-muted small me-1">Avg Ticket:</span>
-                    <span class="metric-val font-mono fw-bold text-dark small">8m 45s</span>
+                <div class="ticket-counter d-flex align-items-center px-2.5 py-1 rounded-2">
+                    <span class="ticket-icon me-1.5">⏱️</span>
+                    <span class="ticket-label text-muted small me-1">Avg Ticket:</span>
+                    <span class="ticket-value font-mono fw-bold small">8m 45s</span>
                 </div>
 
-                <!-- On-target Service Indicator Badge -->
-                <div class="service-pace-badge d-flex align-items-center px-2 py-1 rounded-pill">
-                    <span class="live-dot live-dot-green me-1"></span>
-                    <span class="small fw-semibold text-emerald">Service: On Pace</span>
+                <!-- Soft Sage Service Pace Pill -->
+                <div class="service-pace-pill d-flex align-items-center px-2.5 py-1">
+                    <span class="pulse-dot pulse-dot-sage me-1.5"></span>
+                    <span class="small fw-semibold">Service: On Pace</span>
                 </div>
 
-                <!-- Shift Toggle -->
+                <!-- Shift Dropdown -->
                 <div class="position-relative">
-                    <button class="btn btn-sm btn-light border shift-btn d-flex align-items-center gap-1 fw-semibold text-secondary" type="button" @onclick="ToggleShiftDropdown">
+                    <button class="btn btn-sm btn-outline-warm shift-dropdown-btn d-flex align-items-center gap-1.5" type="button" @onclick="ToggleShiftDropdown">
                         <span>Dinner Service</span>
-                        <span class="dropdown-caret">▾</span>
+                        <span class="dropdown-arrow">▾</span>
                     </button>
                     @if (showShiftDropdown)
                     {
-                        <div class="dropdown-menu show shadow border position-absolute mt-1 end-0 py-1" style="min-width: 170px; z-index: 1050;">
+                        <div class="dropdown-menu show shadow-sm border position-absolute mt-1 end-0 py-1" style="min-width: 175px; z-index: 1050; border-color: var(--border-subtle);">
                             <button class="dropdown-item small active fw-semibold" @onclick="() => showShiftDropdown = false">Dinner Service (Active)</button>
                             <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Lunch Rush</button>
                             <button class="dropdown-item small" @onclick="() => showShiftDropdown = false">Late Night / Bar</button>
@@ -49,7 +49,7 @@
                 </div>
 
                 <!-- Quick Filters Trigger -->
-                <button class="btn btn-sm btn-outline-secondary quick-filter-btn d-flex align-items-center gap-1 fw-semibold" @onclick="ToggleQuickFilters">
+                <button class="btn btn-sm btn-outline-warm quick-filters-btn d-flex align-items-center gap-1.5" @onclick="ToggleQuickFilters">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
@@ -60,9 +60,9 @@
 
         @if (showQuickFiltersNotice)
         {
-            <div class="quick-filters-banner px-4 py-2 bg-white border-bottom d-flex align-items-center justify-content-between">
+            <div class="quick-filters-subbar px-4 py-2 border-bottom d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-2 small">
-                    <span class="fw-bold text-secondary">Quick Filter Preset:</span>
+                    <span class="fw-semibold text-muted">Quick Filter Presets:</span>
                     <span class="badge bg-light text-dark border">Allergens Only</span>
                     <span class="badge bg-light text-dark border">Tickets > 10m</span>
                     <span class="badge bg-light text-dark border">Margin &lt; 65%</span>
@@ -72,7 +72,7 @@
             </div>
         }
 
-        <article class="content-body px-4 py-3">
+        <article class="content-canvas px-4 py-3">
             @Body
         </article>
     </main>
