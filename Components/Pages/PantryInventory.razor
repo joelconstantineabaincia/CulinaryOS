@@ -8,7 +8,7 @@
     <!-- Page Heading -->
     <div class="page-heading">
         <div>
-            <div class="eyebrow">Inventory · Updated just now</div>
+            <div class="eyebrow">Inventory Control &middot; Active Service Stock</div>
             <h1>Fresh Pantry & Yield Tracker</h1>
             <p>Monitor par levels, freshness, and purchasing velocity.</p>
         </div>
@@ -24,14 +24,14 @@
         </div>
     }
 
-    <!-- 4 Top Metric Cards (Calculated dynamically) -->
+    <!-- 4 Top Metric Cards (100% Calculated Dynamically) -->
     <div class="metrics-grid">
         <article class="metric-card">
             <div class="metric-icon sage"><Icon Name="trend" Size="17" /></div>
             <div class="metric-copy">
                 <span>Total Stock Par</span>
                 <strong>$@Culinary.TotalStockParValue.ToString("N0")</strong>
-                <small class="sage">+4% vs last week</small>
+                <small class="sage">@Culinary.StockParHealthDifference</small>
             </div>
         </article>
 
@@ -57,8 +57,8 @@
             <div class="metric-icon clay"><Icon Name="sparkle" Size="17" /></div>
             <div class="metric-copy">
                 <span>Turnover Velocity</span>
-                <strong>3.8x / mo</strong>
-                <small class="clay">Healthy inventory</small>
+                <strong>@Culinary.TurnoverVelocity.ToString("0.0")x / mo</strong>
+                <small class="clay">@Culinary.TurnoverHealthDescription</small>
             </div>
         </article>
     </div>
@@ -76,17 +76,17 @@
 
                 <!-- Filter Mode -->
                 <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="filterMode">
-                    <option value="All">All stock items</option>
-                    <option value="LowStock">Below Par only</option>
-                    <option value="Expiring">Expiring Soon (&le; 48h)</option>
+                    <option value="All">All stock items (@Culinary.PantryStock.Count)</option>
+                    <option value="LowStock">Below Par only (@Culinary.BelowParCount)</option>
+                    <option value="Expiring">Expiring Soon (&le; 48h) (@Culinary.ExpiringSoonCount)</option>
                 </select>
 
                 <!-- Storage Location Filter -->
                 <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="storageFilter">
                     <option value="All">All Storage</option>
-                    <option value="Walk-in Cooler">Walk-in Cooler</option>
-                    <option value="Dry Larder">Dry Larder</option>
-                    <option value="Freezer">Freezer</option>
+                    <option value="Walk-in Cooler">Walk-in Cooler (@Culinary.PantryStock.Count(p => p.StorageZone == "Walk-in Cooler"))</option>
+                    <option value="Dry Larder">Dry Larder (@Culinary.PantryStock.Count(p => p.StorageZone == "Dry Larder"))</option>
+                    <option value="Freezer">Freezer (@Culinary.PantryStock.Count(p => p.StorageZone == "Freezer"))</option>
                 </select>
             </div>
         </div>
@@ -114,8 +114,10 @@
                 {
                     var isChecked = selectedSkus.Contains(item.Sku);
                     var freshState = GetFreshnessState(item);
+                    var isHighlighted = !string.IsNullOrEmpty(highlightedSku) && highlightedSku.Equals(item.Sku, StringComparison.OrdinalIgnoreCase);
 
-                    <div class="table-row @(isChecked ? "selected" : "")">
+                    <div class="table-row @(isChecked ? "selected" : "")"
+                         style="@(isHighlighted ? "background: #fff8f5; border-left: 3px solid var(--clay);" : "")">
                         <input aria-label="Select @item.Name"
                                checked="@isChecked"
                                class="row-checkbox"
@@ -177,7 +179,7 @@
             <span>@selectedSkus.Count items selected</span>
             <i></i>
             <button type="button" @onclick="CreateCombinedPO">
-                Create Combined PO (+10 units) <Icon Name="chevron" Size="14" />
+                Create Combined PO (+10 units each) <Icon Name="chevron" Size="14" />
             </button>
         </div>
     }
@@ -268,8 +270,12 @@
 }
 
 @code {
-    private HashSet<string> selectedSkus = new() { "SEA-1048", "PRO-2231" };
+    [SupplyParameterFromQuery(Name = "sku")]
+    public string? QuerySku { get; set; }
+
+    private HashSet<string> selectedSkus = new();
     private string statusMessage = "";
+    private string? highlightedSku;
 
     private string searchTerm = "";
     private string filterMode = "All";
@@ -288,6 +294,22 @@
     private int newItemExpiryDays = 7;
     private string newItemSupplier = "Organic Co-op";
     private string newItemLocation = "Walk-in · Shelf B1";
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(QuerySku))
+        {
+            var target = Culinary.PantryStock.FirstOrDefault(p => p.Sku.Equals(QuerySku, StringComparison.OrdinalIgnoreCase));
+            if (target != null)
+            {
+                filterMode = "All";
+                storageFilter = "All";
+                searchTerm = "";
+                highlightedSku = target.Sku;
+                statusMessage = $"Focused on inventory item {target.Name} ({target.Sku}).";
+            }
+        }
+    }
 
     private IEnumerable<FoodSprint.Models.PantryItem> FilteredPantryItems
     {
@@ -366,6 +388,7 @@
         searchTerm = "";
         filterMode = "All";
         storageFilter = "All";
+        highlightedSku = null;
     }
 
     private void SubmitNewItem()

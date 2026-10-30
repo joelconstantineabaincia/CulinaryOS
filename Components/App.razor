@@ -18,6 +18,27 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.culinaryShortcuts = {
+            init: function (dotNetHelper) {
+                document.addEventListener('keydown', function (e) {
+                    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+                        e.preventDefault();
+                        dotNetHelper.invokeMethodAsync('ToggleSearchModal');
+                    }
+                    if (e.key === 'Escape') {
+                        dotNetHelper.invokeMethodAsync('CloseModals');
+                    }
+                });
+            },
+            focusSearchInput: function () {
+                setTimeout(function () {
+                    const el = document.getElementById('quick-search-input');
+                    if (el) el.focus();
+                }, 60);
+            }
+        };
+    </script>
 </body>
 
 </html>

@@ -118,6 +118,7 @@ namespace FoodSprint.Models
     public class SystemNotification
     {
         public int Id { get; set; }
+        public string Key { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string Severity { get; set; } = "info"; // info, warning, danger

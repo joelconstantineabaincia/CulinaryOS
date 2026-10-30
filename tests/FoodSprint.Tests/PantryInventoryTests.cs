@@ -79,6 +79,16 @@ namespace FoodSprint.Tests
             service.DeletePantryItem(newItem.Id);
             Assert.Null(service.GetPantryItemById(newItem.Id));
         }
+
+        [Fact]
+        public void TurnoverAndParCalculations_ReflectActualInventory()
+        {
+            var service = CreateIsolatedService();
+
+            Assert.True(service.TurnoverVelocity > 0);
+            Assert.False(string.IsNullOrWhiteSpace(service.TurnoverHealthDescription));
+            Assert.False(string.IsNullOrWhiteSpace(service.StockParHealthDifference));
+            Assert.True(service.StockParHealthPercent > 0);
+        }
     }
 }
-

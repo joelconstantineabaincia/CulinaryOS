@@ -96,6 +96,42 @@ namespace FoodSprint.Tests
             service.BumpTicket(ticketId);
             Assert.Null(service.GetTicketById(ticketId));
         }
+
+        [Fact]
+        public void AverageTicketCalculations_ReflectsActiveData()
+        {
+            var service = CreateIsolatedService();
+            service.ActiveTickets.Clear();
+
+            // When no tickets
+            Assert.Equal(0, service.AverageTicketMinutes);
+            Assert.Equal("--", service.FormattedAverageTicketTime);
+
+            // Add tickets with known minutes
+            service.AddKitchenTicket(new KitchenTicket { TableNumber = 1, ElapsedMinutes = 6 });
+            service.AddKitchenTicket(new KitchenTicket { TableNumber = 2, ElapsedMinutes = 10 });
+
+            // (6 + 10) / 2 = 8
+            Assert.Equal(8.0, service.AverageTicketMinutes);
+            Assert.Equal("8m 00s", service.FormattedAverageTicketTime);
+            Assert.Equal("Service: On Pace", service.ServicePaceStatus);
+
+            // Add a late ticket: (6 + 10 + 20) / 3 = 12
+            service.AddKitchenTicket(new KitchenTicket { TableNumber = 3, ElapsedMinutes = 20 });
+            Assert.Equal("Service: Exceeding Par", service.ServicePaceStatus);
+            Assert.Equal("coral", service.ServicePaceCssClass);
+        }
+
+        [Fact]
+        public void ServiceInsight_ProducesDynamicOperationalSummary()
+        {
+            var service = CreateIsolatedService();
+            service.ActiveTickets.Clear();
+
+            Assert.Contains("clear", service.ServiceInsight, StringComparison.OrdinalIgnoreCase);
+
+            service.AddKitchenTicket(new KitchenTicket { TableNumber = 5, Station = "Sauté", ElapsedMinutes = 4, IsRush = true });
+            Assert.Contains("expedited", service.ServiceInsight, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
-

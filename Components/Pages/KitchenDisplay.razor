@@ -8,9 +8,12 @@
     <!-- Page Heading -->
     <div class="page-heading">
         <div>
-            <div class="eyebrow">Dinner service · Live</div>
+            <div class="eyebrow">
+                @(Culinary.IsShiftActive ? "Dinner service · Live" : "Service Standby · Prep Mode")
+                &middot; Station: @Culinary.ActiveStation
+            </div>
             <h1>Live KDS Rail</h1>
-            <p>@FilteredTickets.Count() tickets on rail &middot; @Culinary.ActiveTickets.Count(t => t.IsRush) expedited</p>
+            <p>@FilteredTickets.Count() tickets on rail &middot; @Culinary.ActiveTickets.Count(t => t.IsRush) expedited &middot; Avg: @Culinary.FormattedAverageTicketTime</p>
         </div>
         <div class="heading-actions">
             <div class="legend">
@@ -18,7 +21,18 @@
                 <span class="dot amber"></span> Near par
                 <span class="dot coral"></span> Over par
             </div>
-            
+
+            <!-- Quick Filter for User's Assigned Station -->
+            @if (Culinary.ActiveStationShortName != "All")
+            {
+                <button class="button @(selectedStation == Culinary.ActiveStationShortName ? "primary-button" : "outline-button")"
+                        type="button"
+                        style="font-size: 10px; padding: 5px 9px;"
+                        @onclick="SelectMyStation">
+                    <Icon Name="flame" Size="13" /> My Station (@Culinary.ActiveStationShortName)
+                </button>
+            }
+
             <!-- Station Filter Dropdown -->
             <select class="form-select" style="font-size: 10px; padding: 5px 9px;" @bind="selectedStation">
                 <option value="All">All stations (@Culinary.ActiveTickets.Count)</option>
@@ -37,11 +51,24 @@
                 <option value="All">All Statuses</option>
             </select>
 
-            <button class="button primary-button" type="button" @onclick="() => showNewTicketModal = true">
+            <button class="button primary-button" type="button" @onclick="OpenNewTicketModal">
                 <Icon Name="plus" Size="15" /> New ticket
             </button>
         </div>
     </div>
+
+    @if (!Culinary.IsShiftActive)
+    {
+        <div style="background: var(--sand); border: 1px solid var(--border-strong); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-dot" style="background: var(--muted); box-shadow: none;"></span>
+                <span><strong>Shift Standby Mode:</strong> Front-of-house service is currently paused for kitchen prep. Firing or advancing tickets will automatically activate live shift.</span>
+            </div>
+            <button class="button outline-button" style="padding: 4px 8px; font-size: 9px;" type="button" @onclick="() => Culinary.ToggleShift()">
+                Activate Service
+            </button>
+        </div>
+    }
 
     @if (!string.IsNullOrEmpty(statusAlert))
     {
@@ -67,9 +94,12 @@
             {
                 var isCritical = ticket.IsCriticalAllergen;
                 var isLate = ticket.ElapsedMinutes >= 12;
+                var isNearPar = ticket.ElapsedMinutes >= 9 && ticket.ElapsedMinutes < 12;
                 var timerDisplay = !string.IsNullOrEmpty(ticket.ElapsedTimeString) ? ticket.ElapsedTimeString : $"{ticket.ElapsedMinutes:D2}:00";
+                var isHighlighted = highlightedTicketId.HasValue && highlightedTicketId.Value == ticket.TicketId;
 
-                <article class="ticket @(isCritical ? "critical-ticket" : "") @(ticket.IsRush ? "rush-ticket" : "")" style="@(ticket.IsRush ? "border-color: var(--clay); box-shadow: 0 0 0 1px var(--clay);" : "")">
+                <article class="ticket @(isCritical ? "critical-ticket" : "") @(ticket.IsRush ? "rush-ticket" : "")"
+                         style="@(isHighlighted ? "border: 2px solid var(--clay); box-shadow: 0 0 12px rgba(217, 93, 57, 0.25);" : ticket.IsRush ? "border-color: var(--clay); box-shadow: 0 0 0 1px var(--clay);" : "")">
                     @if (isCritical)
                     {
                         <div class="allergen-banner">
@@ -87,11 +117,16 @@
                         </div>
                         <div class="ticket-meta">
                             <span class="station-pill">@ticket.Station</span>
-                            <span class="timer-pill @(isLate ? "late" : "")">
+                            <span class="timer-pill @(isLate ? "late" : isNearPar ? "near-par" : "")"
+                                  style="@(isNearPar ? "color: var(--amber); background: var(--amber-soft);" : "")">
                                 @timerDisplay
                                 @if (isLate)
                                 {
                                     <small>Exceeding Par</small>
+                                }
+                                else if (isNearPar)
+                                {
+                                    <small style="border-left: 1px solid var(--amber); padding-left: 4px;">Near Par</small>
                                 }
                             </span>
                         </div>
@@ -164,11 +199,11 @@
         }
     </div>
 
-    <!-- Bottom Rail Summary -->
+    <!-- Bottom Rail Summary: 100% Calculated -->
     <div class="rail-summary">
         <div>
             <Icon Name="sparkle" Size="18" />
-            <span><strong>Service insight</strong> Garde Manger is clearing tickets 1m 12s faster than average.</span>
+            <span><strong>Service insight</strong> @Culinary.ServiceInsight</span>
         </div>
         <button type="button" @onclick="() => showAnalyticsModal = true">
             View station analytics <Icon Name="chevron" Size="14" />
@@ -265,7 +300,7 @@
     </div>
 }
 
-<!-- Station Analytics Modal -->
+<!-- Station Analytics Modal: 100% Calculated -->
 @if (showAnalyticsModal)
 {
     <div class="modal-backdrop" @onclick="() => showAnalyticsModal = false">
@@ -282,8 +317,8 @@
                         <div class="metric-icon sage"><Icon Name="clock" Size="17" /></div>
                         <div class="metric-copy">
                             <span>Average Ticket Time</span>
-                            <strong>8m 45s</strong>
-                            <small class="sage">Target: 10m 00s</small>
+                            <strong>@Culinary.FormattedAverageTicketTime</strong>
+                            <small class="sage">Target par: 10m 00s</small>
                         </div>
                     </article>
                     <article class="metric-card">
@@ -291,7 +326,7 @@
                         <div class="metric-copy">
                             <span>Rush Orders</span>
                             <strong>@Culinary.ActiveTickets.Count(t => t.IsRush) active</strong>
-                            <small class="coral">High priority</small>
+                            <small class="coral">High priority expo</small>
                         </div>
                     </article>
                 </div>
@@ -300,10 +335,18 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     @foreach (var stationName in new[] { "Garde Manger", "Hot Line", "Sauté", "Grill", "Pastry" })
                     {
-                        var count = Culinary.ActiveTickets.Count(t => t.Station == stationName);
+                        var stationTickets = Culinary.ActiveTickets.Where(t => t.Station == stationName).ToList();
+                        var count = stationTickets.Count;
+                        var avgMins = count > 0 ? stationTickets.Average(t => t.ElapsedMinutes) : 0;
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--linen); border-radius: 6px; font-size: 11px;">
-                            <strong>@stationName</strong>
-                            <span style="color: var(--muted);">@count tickets · @(count > 0 ? "Active Load" : "Idle")</span>
+                            <div>
+                                <strong>@stationName</strong>
+                                @if (stationName.Equals(Culinary.ActiveStationShortName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span style="font-size: 9px; margin-left: 6px; padding: 1px 5px; background: var(--clay-soft); color: var(--clay); border-radius: 4px; font-weight: 700;">My Station</span>
+                                }
+                            </div>
+                            <span style="color: var(--muted);">@count tickets · @(count > 0 ? $"{avgMins:0.0}m avg" : "Idle")</span>
                         </div>
                     }
                 </div>
@@ -316,9 +359,16 @@
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "table")]
+    public int? QueryTable { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ticket")]
+    public int? QueryTicketId { get; set; }
+
     private string selectedStation = "All";
     private string selectedStatusFilter = "Active";
     private string statusAlert = "";
+    private int? highlightedTicketId;
 
     private bool showNewTicketModal = false;
     private bool showAnalyticsModal = false;
@@ -339,6 +389,26 @@
         if (Culinary.MenuItems.Any())
         {
             selectedDishToAdd = Culinary.MenuItems.First().Name;
+        }
+        newServerName = Culinary.ActiveRole;
+        newStation = Culinary.ActiveStationShortName != "All" ? Culinary.ActiveStationShortName : "Hot Line";
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (QueryTicketId.HasValue || QueryTable.HasValue)
+        {
+            selectedStation = "All";
+            selectedStatusFilter = "All";
+            var target = Culinary.ActiveTickets.FirstOrDefault(t =>
+                (QueryTicketId.HasValue && t.TicketId == QueryTicketId.Value) ||
+                (QueryTable.HasValue && t.TableNumber == QueryTable.Value));
+
+            if (target != null)
+            {
+                highlightedTicketId = target.TicketId;
+                statusAlert = $"Focused on order for Table {target.TableNumber} (#{target.OrderNumber}).";
+            }
         }
     }
 
@@ -370,6 +440,18 @@
         }
     }
 
+    private void SelectMyStation()
+    {
+        if (selectedStation == Culinary.ActiveStationShortName)
+        {
+            selectedStation = "All";
+        }
+        else
+        {
+            selectedStation = Culinary.ActiveStationShortName;
+        }
+    }
+
     private void ToggleRush(FoodSprint.Models.KitchenTicket ticket)
     {
         Culinary.ToggleTicketRush(ticket.TicketId);
@@ -378,6 +460,11 @@
 
     private void AdvanceTicket(FoodSprint.Models.KitchenTicket ticket)
     {
+        if (!Culinary.IsShiftActive)
+        {
+            Culinary.IsShiftActive = true;
+        }
+
         if (ticket.Status == "Cooking")
         {
             ticket.Status = "Plated";
@@ -396,6 +483,14 @@
     {
         selectedStation = "All";
         selectedStatusFilter = "Active";
+        highlightedTicketId = null;
+    }
+
+    private void OpenNewTicketModal()
+    {
+        newServerName = Culinary.ActiveRole;
+        newStation = Culinary.ActiveStationShortName != "All" ? Culinary.ActiveStationShortName : "Hot Line";
+        showNewTicketModal = true;
     }
 
     private void AddDishToNewTicket()
@@ -417,8 +512,12 @@
     {
         if (!ticketItemsToFire.Any())
         {
-            // Add at least selected dish if none added yet
             AddDishToNewTicket();
+        }
+
+        if (!Culinary.IsShiftActive)
+        {
+            Culinary.IsShiftActive = true;
         }
 
         var newTicket = new FoodSprint.Models.KitchenTicket

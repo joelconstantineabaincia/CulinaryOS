@@ -9,11 +9,12 @@ namespace FoodSprint.Services
         public List<KitchenTicket> ActiveTickets { get; set; } = new();
         public List<PantryItem> PantryStock { get; set; } = new();
         public List<SystemNotification> Notifications { get; set; } = new();
+        public HashSet<string> ReadNotificationKeys { get; set; } = new();
         public bool IsShiftActive { get; set; } = true;
-        public int TableLoad { get; set; } = 18;
         public int TableCapacity { get; set; } = 24;
         public string ActiveRole { get; set; } = "Expo Lead";
         public string ActiveStation { get; set; } = "Station 02";
+        public string ActiveMenuSeason { get; set; } = "Fall Dinner 2025";
     }
 
     public class CulinaryService
@@ -25,12 +26,13 @@ namespace FoodSprint.Services
         public List<KitchenTicket> ActiveTickets { get; private set; } = new();
         public List<PantryItem> PantryStock { get; private set; } = new();
         public List<SystemNotification> Notifications { get; private set; } = new();
+        public HashSet<string> ReadNotificationKeys { get; private set; } = new();
 
         public bool IsShiftActive { get; set; } = true;
-        public int TableLoad { get; set; } = 18;
         public int TableCapacity { get; set; } = 24;
         public string ActiveRole { get; set; } = "Expo Lead";
         public string ActiveStation { get; set; } = "Station 02";
+        public string ActiveMenuSeason { get; set; } = "Fall Dinner 2025";
 
         public event Action? OnChange;
 
@@ -61,6 +63,105 @@ namespace FoodSprint.Services
 
         private void NotifyStateChanged() => OnChange?.Invoke();
 
+        #region Operational Metrics & Calculations
+
+        public int ActiveTableCount => ActiveTickets.Select(t => t.TableNumber).Distinct().Count();
+
+        public int SeatedTableCount => IsShiftActive
+            ? Math.Max(ActiveTableCount, ActiveTickets.Count > 0 ? 18 : 6)
+            : 0;
+
+        public int TableLoadPercentage => TableCapacity > 0
+            ? (int)Math.Clamp(Math.Round(((double)SeatedTableCount / TableCapacity) * 100), 0, 100)
+            : 0;
+
+        public double AverageTicketMinutes => ActiveTickets.Any()
+            ? ActiveTickets.Average(t => t.ElapsedMinutes)
+            : 0.0;
+
+        public string FormattedAverageTicketTime
+        {
+            get
+            {
+                if (!ActiveTickets.Any()) return "--";
+                var avgMins = ActiveTickets.Average(t => t.ElapsedMinutes);
+                int mins = (int)avgMins;
+                int secs = (int)Math.Round((avgMins - mins) * 60);
+                return $"{mins}m {secs:D2}s";
+            }
+        }
+
+        public string ServicePaceStatus
+        {
+            get
+            {
+                if (!IsShiftActive) return "Service: Standby / Prep";
+                if (!ActiveTickets.Any()) return "Service: Standby";
+                var avg = AverageTicketMinutes;
+                if (avg >= 12.0) return "Service: Exceeding Par";
+                if (avg >= 9.0) return "Service: Near Par";
+                return "Service: On Pace";
+            }
+        }
+
+        public string ServicePaceCssClass
+        {
+            get
+            {
+                if (!IsShiftActive) return "muted";
+                if (!ActiveTickets.Any()) return "sage";
+                var avg = AverageTicketMinutes;
+                if (avg >= 12.0) return "coral";
+                if (avg >= 9.0) return "amber";
+                return "sage";
+            }
+        }
+
+        public string ServiceInsight
+        {
+            get
+            {
+                if (!IsShiftActive)
+                    return "Kitchen in prep mode. Shift is currently on standby.";
+                if (!ActiveTickets.Any())
+                    return "All kitchen stations are clear and prepped for service.";
+
+                var rushCount = ActiveTickets.Count(t => t.IsRush);
+                var lateCount = ActiveTickets.Count(t => t.ElapsedMinutes >= 12);
+                if (rushCount > 0)
+                    return $"{rushCount} expedited order(s) flagged for priority expo handling.";
+                if (lateCount > 0)
+                    return $"{lateCount} ticket(s) currently exceeding par target turnaround.";
+
+                var stationStats = ActiveTickets
+                    .GroupBy(t => t.Station)
+                    .Select(g => new { Station = g.Key, Avg = g.Average(t => t.ElapsedMinutes), Count = g.Count() })
+                    .OrderBy(s => s.Avg)
+                    .FirstOrDefault();
+
+                if (stationStats != null)
+                    return $"{stationStats.Station} is operating on pace ({stationStats.Avg:0}m avg ticket time across {stationStats.Count} tickets).";
+
+                return "Kitchen pacing is aligned with target dinner service par.";
+            }
+        }
+
+        public string ActiveStationShortName
+        {
+            get
+            {
+                if (ActiveStation.Contains("Garde Manger", StringComparison.OrdinalIgnoreCase)) return "Garde Manger";
+                if (ActiveStation.Contains("Hot Line", StringComparison.OrdinalIgnoreCase)) return "Hot Line";
+                if (ActiveStation.Contains("Sauté", StringComparison.OrdinalIgnoreCase)) return "Sauté";
+                if (ActiveStation.Contains("Grill", StringComparison.OrdinalIgnoreCase)) return "Grill";
+                if (ActiveStation.Contains("Pastry", StringComparison.OrdinalIgnoreCase)) return "Pastry";
+                if (ActiveStation.Contains("Expo", StringComparison.OrdinalIgnoreCase)) return "Expo & Pass";
+                return "All";
+            }
+        }
+
+        #endregion
+
         #region Persistence
 
         public void LoadFromDisk()
@@ -83,11 +184,12 @@ namespace FoodSprint.Services
                             ActiveTickets = store.ActiveTickets;
                             PantryStock = store.PantryStock;
                             Notifications = store.Notifications;
+                            ReadNotificationKeys = store.ReadNotificationKeys ?? new();
                             IsShiftActive = store.IsShiftActive;
-                            TableLoad = store.TableLoad;
-                            TableCapacity = store.TableCapacity;
-                            ActiveRole = store.ActiveRole;
-                            ActiveStation = store.ActiveStation;
+                            TableCapacity = store.TableCapacity > 0 ? store.TableCapacity : 24;
+                            ActiveRole = !string.IsNullOrWhiteSpace(store.ActiveRole) ? store.ActiveRole : "Expo Lead";
+                            ActiveStation = !string.IsNullOrWhiteSpace(store.ActiveStation) ? store.ActiveStation : "Station 02";
+                            ActiveMenuSeason = !string.IsNullOrWhiteSpace(store.ActiveMenuSeason) ? store.ActiveMenuSeason : "Fall Dinner 2025";
                             SyncNotifications();
                             return;
                         }
@@ -115,11 +217,12 @@ namespace FoodSprint.Services
                         ActiveTickets = ActiveTickets,
                         PantryStock = PantryStock,
                         Notifications = Notifications,
+                        ReadNotificationKeys = ReadNotificationKeys,
                         IsShiftActive = IsShiftActive,
-                        TableLoad = TableLoad,
                         TableCapacity = TableCapacity,
                         ActiveRole = ActiveRole,
-                        ActiveStation = ActiveStation
+                        ActiveStation = ActiveStation,
+                        ActiveMenuSeason = ActiveMenuSeason
                     };
 
                     var dir = Path.GetDirectoryName(_storageFilePath);
@@ -304,6 +407,21 @@ namespace FoodSprint.Services
 
         public decimal TotalStockParValue => PantryStock.Sum(p => (decimal)p.CurrentStock * p.UnitCost);
 
+        public decimal TotalTargetParValue => PantryStock.Sum(p => (decimal)p.MinThreshold * p.UnitCost);
+
+        public int StockParHealthPercent => TotalTargetParValue > 0
+            ? (int)Math.Round((TotalStockParValue / TotalTargetParValue) * 100)
+            : 100;
+
+        public string StockParHealthDifference
+        {
+            get
+            {
+                int diff = StockParHealthPercent - 100;
+                return diff >= 0 ? $"+{diff}% vs target par" : $"{diff}% vs target par";
+            }
+        }
+
         public decimal SpoilageRisk48h => PantryStock
             .Where(p => p.DaysUntilExpiry <= 2)
             .Sum(p => (decimal)p.CurrentStock * p.UnitCost);
@@ -311,6 +429,20 @@ namespace FoodSprint.Services
         public int BelowParCount => PantryStock.Count(p => p.IsLowStock);
 
         public int ExpiringSoonCount => PantryStock.Count(p => p.DaysUntilExpiry <= 2);
+
+        public double TurnoverVelocity => Math.Round(PantryStock.Any()
+            ? (PantryStock.Average(p => p.ParPercentage) / 100.0) * 4.2
+            : 0, 1);
+
+        public string TurnoverHealthDescription
+        {
+            get
+            {
+                if (TurnoverVelocity >= 3.5) return "Healthy inventory velocity";
+                if (TurnoverVelocity >= 2.5) return "Moderate stock turnover";
+                return "Action recommended: slow stock";
+            }
+        }
 
         public PantryItem? GetPantryItemById(int id) => PantryStock.FirstOrDefault(p => p.Id == id);
 
@@ -437,6 +569,7 @@ namespace FoodSprint.Services
             lock (_lock)
             {
                 IsShiftActive = !IsShiftActive;
+                SyncNotifications();
                 SaveToDisk();
             }
         }
@@ -465,6 +598,10 @@ namespace FoodSprint.Services
                 if (notif != null)
                 {
                     notif.IsRead = true;
+                    if (!string.IsNullOrEmpty(notif.Key))
+                    {
+                        ReadNotificationKeys.Add(notif.Key);
+                    }
                     SaveToDisk();
                 }
             }
@@ -477,6 +614,10 @@ namespace FoodSprint.Services
                 foreach (var notif in Notifications)
                 {
                     notif.IsRead = true;
+                    if (!string.IsNullOrEmpty(notif.Key))
+                    {
+                        ReadNotificationKeys.Add(notif.Key);
+                    }
                 }
                 SaveToDisk();
             }
@@ -490,55 +631,69 @@ namespace FoodSprint.Services
             // 1. Critical allergens in active tickets
             foreach (var ticket in ActiveTickets.Where(t => t.IsCriticalAllergen && t.Status != "Served"))
             {
+                var key = $"allergen-ticket-{ticket.TicketId}";
                 updated.Add(new SystemNotification
                 {
                     Id = nextId++,
+                    Key = key,
                     Title = $"CRITICAL ALLERGEN: Table {ticket.TableNumber}",
                     Message = $"{ticket.AllergyAlert} alert on active order #{ticket.OrderNumber}.",
                     Severity = "danger",
-                    LinkUrl = "/kitchen",
+                    LinkUrl = $"/kitchen?table={ticket.TableNumber}&ticket={ticket.TicketId}",
                     Timestamp = ticket.CreatedAt,
-                    IsRead = false
+                    IsRead = ReadNotificationKeys.Contains(key)
                 });
             }
 
             // 2. High spoilage risk ingredients (<= 24h)
             foreach (var item in PantryStock.Where(p => p.DaysUntilExpiry <= 1))
             {
+                var key = $"spoilage-sku-{item.Sku}";
                 updated.Add(new SystemNotification
                 {
                     Id = nextId++,
+                    Key = key,
                     Title = $"Freshness Risk: {item.Name}",
                     Message = $"{item.CurrentStock} {item.Unit} expiring in {item.FreshnessBadge}. Action required.",
                     Severity = "warning",
-                    LinkUrl = "/pantry",
+                    LinkUrl = $"/pantry?sku={Uri.EscapeDataString(item.Sku)}",
                     Timestamp = DateTime.UtcNow.AddMinutes(-30),
-                    IsRead = false
+                    IsRead = ReadNotificationKeys.Contains(key)
                 });
             }
 
             // 3. Below Par inventory
-            foreach (var item in PantryStock.Where(p => p.IsLowStock).Take(3))
+            foreach (var item in PantryStock.Where(p => p.IsLowStock).Take(4))
             {
+                var key = $"lowstock-sku-{item.Sku}";
                 updated.Add(new SystemNotification
                 {
                     Id = nextId++,
+                    Key = key,
                     Title = $"Stock Par Low: {item.Name}",
-                    Message = $"Current stock ({item.CurrentStock} {item.Unit}) is below minimum threshold ({item.MinThreshold} {item.Unit}).",
+                    Message = $"Stock ({item.CurrentStock} {item.Unit}) is below minimum threshold ({item.MinThreshold} {item.Unit}).",
                     Severity = "info",
-                    LinkUrl = "/pantry",
+                    LinkUrl = $"/pantry?sku={Uri.EscapeDataString(item.Sku)}",
                     Timestamp = DateTime.UtcNow.AddHours(-1),
-                    IsRead = false
+                    IsRead = ReadNotificationKeys.Contains(key)
                 });
             }
 
-            // Preserve read status of existing notifications if matching title
-            foreach (var n in updated)
+            // 4. Standby mode alert if shift inactive
+            if (!IsShiftActive)
             {
-                if (Notifications.Any(existing => existing.Title == n.Title && existing.IsRead))
+                var key = "shift-standby";
+                updated.Add(new SystemNotification
                 {
-                    n.IsRead = true;
-                }
+                    Id = nextId++,
+                    Key = key,
+                    Title = "Kitchen Service Standby",
+                    Message = "Front-of-house service is off-shift. New dining tickets are paused.",
+                    Severity = "warning",
+                    LinkUrl = "/kitchen",
+                    Timestamp = DateTime.UtcNow,
+                    IsRead = ReadNotificationKeys.Contains(key)
+                });
             }
 
             Notifications = updated;
@@ -551,12 +706,15 @@ namespace FoodSprint.Services
             var results = new List<SearchResultItem>();
 
             // Dishes
-            foreach (var dish in MenuItems.Where(m => m.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || m.Category.Contains(q, StringComparison.OrdinalIgnoreCase)))
+            foreach (var dish in MenuItems.Where(m =>
+                m.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                m.Category.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                m.Allergens.Contains(q, StringComparison.OrdinalIgnoreCase)))
             {
                 results.Add(new SearchResultItem
                 {
                     Title = dish.Name,
-                    Subtitle = $"{dish.Category} · {dish.MenuPrice:C} · {dish.ProfitMargin:0.0}% Margin",
+                    Subtitle = $"{dish.Category} · {dish.MenuPrice:C} · {dish.ProfitMargin:0.0}% Margin · {GetClassification(dish)}",
                     Category = "Menu Recipe",
                     Url = $"/?dish={Uri.EscapeDataString(dish.Name)}",
                     IconName = "recipe"
@@ -564,27 +722,40 @@ namespace FoodSprint.Services
             }
 
             // Tickets
-            foreach (var ticket in ActiveTickets.Where(t => t.TableNumber.ToString().Contains(q) || t.Station.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase))))
+            foreach (var ticket in ActiveTickets.Where(t =>
+                $"Table {t.TableNumber}".Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                t.TableNumber.ToString().Contains(q) ||
+                t.OrderNumber.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                t.Station.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                t.ServerName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                t.AllergyAlert.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                t.Courses.Any(c => c.Items.Any(ci => ci.Name.Contains(q, StringComparison.OrdinalIgnoreCase)))))
             {
                 results.Add(new SearchResultItem
                 {
-                    Title = $"Table {ticket.TableNumber} Ticket",
-                    Subtitle = $"Station: {ticket.Station} · {ticket.Status} · {ticket.Guests} guests",
+                    Title = $"Table {ticket.TableNumber} Ticket (#{ticket.OrderNumber})",
+                    Subtitle = $"Station: {ticket.Station} · {ticket.Status} · {ticket.Guests} guests · Server: {ticket.ServerName}",
                     Category = "Kitchen Rail",
-                    Url = "/kitchen",
+                    Url = $"/kitchen?table={ticket.TableNumber}&ticket={ticket.TicketId}",
                     IconName = "rail"
                 });
             }
 
             // Pantry
-            foreach (var item in PantryStock.Where(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || p.Sku.Contains(q, StringComparison.OrdinalIgnoreCase) || p.StorageZone.Contains(q, StringComparison.OrdinalIgnoreCase)))
+            foreach (var item in PantryStock.Where(p =>
+                p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.Sku.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.StorageZone.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.Supplier.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.LocationRack.Contains(q, StringComparison.OrdinalIgnoreCase)))
             {
                 results.Add(new SearchResultItem
                 {
-                    Title = item.Name,
-                    Subtitle = $"{item.Sku} · {item.StorageZone} · {item.CurrentStock} {item.Unit}",
+                    Title = $"{item.Name} ({item.Sku})",
+                    Subtitle = $"{item.StorageZone} · {item.CurrentStock} {item.Unit} on hand ({item.ParPercentage}% Par) · {item.FreshnessBadge}",
                     Category = "Pantry Stock",
-                    Url = "/pantry",
+                    Url = $"/pantry?sku={Uri.EscapeDataString(item.Sku)}",
                     IconName = "pantry"
                 });
             }

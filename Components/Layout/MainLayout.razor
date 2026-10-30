@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject FoodSprint.Services.CulinaryService Culinary
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <div class="app-shell">
@@ -11,29 +12,36 @@
                 <span>CulinaryOS</span>
                 <span class="slash">/</span>
                 <strong>@PageEyebrow</strong>
+                <span class="slash" style="opacity: 0.5;">&middot;</span>
+                <span style="font-size: 10px; color: var(--muted);">@Culinary.ActiveStation</span>
             </div>
+
+            <!-- Dynamic Pace Indicator -->
             <div class="pace">
-                <div><Icon Name="clock" Size="15" /> Avg Ticket: <strong>8m 45s</strong></div>
+                <div><Icon Name="clock" Size="15" /> Avg Ticket: <strong>@Culinary.FormattedAverageTicketTime</strong></div>
                 @if (Culinary.IsShiftActive)
                 {
-                    <span class="sage-pill"><span class="status-dot"></span> Service: On Pace</span>
+                    <span class="sage-pill @Culinary.ServicePaceCssClass">
+                        <span class="status-dot"></span> @Culinary.ServicePaceStatus
+                    </span>
                 }
                 else
                 {
                     <span class="sage-pill" style="background: var(--sand); color: var(--muted); border-color: var(--border-strong);">
-                        <span class="status-dot" style="background: var(--muted);"></span> Service: Off Shift
+                        <span class="status-dot" style="background: var(--muted); box-shadow: none;"></span> Service: Standby / Prep
                     </span>
                 }
             </div>
+
             <div class="top-actions">
                 <!-- Quick Search Button -->
-                <button class="search-pill" type="button" @onclick="() => showSearchModal = true">
+                <button class="search-pill" type="button" @onclick="OpenSearch">
                     <Icon Name="search" Size="15" />
                     <span>Quick search</span>
                     <kbd>⌘K</kbd>
                 </button>
 
-                <!-- Notifications Button -->
+                <!-- Notifications Button & Popover -->
                 <div style="position: relative;">
                     <button class="notification-button" aria-label="Notifications" type="button" @onclick="ToggleNotification">
                         <Icon Name="bell" Size="17" />
@@ -43,21 +51,24 @@
                         }
                     </button>
 
-                    <!-- Notifications Popover -->
                     @if (showNotifications)
                     {
                         <div class="notification-popover">
                             <div class="notif-head">
                                 <span>Kitchen Alerts (@Culinary.Notifications.Count(n => !n.IsRead) unread)</span>
-                                <button class="button outline-button" style="padding: 2px 6px; font-size: 8px; min-height: 20px;" type="button" @onclick="MarkAllRead">
-                                    Mark all read
-                                </button>
+                                @if (Culinary.Notifications.Any(n => !n.IsRead))
+                                {
+                                    <button class="button outline-button" style="padding: 2px 6px; font-size: 8px; min-height: 20px;" type="button" @onclick="MarkAllRead">
+                                        Mark all read
+                                    </button>
+                                }
                             </div>
                             <div class="notif-list">
                                 @if (!Culinary.Notifications.Any())
                                 {
-                                    <div style="padding: 18px; text-align: center; color: var(--muted); font-size: 10px;">
-                                        No active alerts.
+                                    <div style="padding: 24px; text-align: center; color: var(--muted); font-size: 11px;">
+                                        <Icon Name="check" Size="20" Class="sage" />
+                                        <div style="margin-top: 6px;">All clear. No active alerts or risks.</div>
                                     </div>
                                 }
                                 else
@@ -72,7 +83,7 @@
                                                 @notif.Title
                                             </strong>
                                             <p>@notif.Message</p>
-                                            <small>@notif.Timestamp.ToString("HH:mm") · Click to view</small>
+                                            <small>@notif.Timestamp.ToString("HH:mm") &middot; @(notif.IsRead ? "Read" : "Unread · Click to view")</small>
                                         </div>
                                     }
                                 }
@@ -82,7 +93,7 @@
                 </div>
 
                 <!-- Shift Switch -->
-                <span class="shift-text">Shift</span>
+                <span class="shift-text">Shift: @(Culinary.IsShiftActive ? "Dinner" : "Prep")</span>
                 <button aria-label="Toggle shift"
                         aria-pressed="@Culinary.IsShiftActive"
                         class="switch @(Culinary.IsShiftActive ? "on" : "")"
@@ -92,7 +103,7 @@
                 </button>
 
                 <button class="filter-button" type="button" @onclick="ToggleShift">
-                    <Icon Name="sliders" Size="16" /> Shift Toggle
+                    <Icon Name="sliders" Size="15" /> @(Culinary.IsShiftActive ? "Standby Mode" : "Activate Shift")
                 </button>
             </div>
         </header>
@@ -103,18 +114,19 @@
     </div>
 </div>
 
-<!-- Quick Search Palette Modal -->
+<!-- Quick Search Command Palette Modal -->
 @if (showSearchModal)
 {
-    <div class="modal-backdrop" @onclick="() => showSearchModal = false">
+    <div class="modal-backdrop" @onclick="CloseSearch">
         <div class="search-palette" @onclick:stopPropagation="true">
             <div class="search-input-wrap">
                 <Icon Name="search" Size="18" />
-                <input placeholder="Search recipes, tickets, ingredients... (Esc to close)"
+                <input id="quick-search-input"
+                       placeholder="Search dishes, table tickets, ingredients... (Esc to close, ↑↓ to navigate)"
                        @bind="searchQuery"
                        @bind:event="oninput"
-                       autofocus />
-                <button class="icon-button" type="button" @onclick="() => showSearchModal = false">
+                       @onkeydown="HandleSearchKeydown" />
+                <button class="icon-button" type="button" @onclick="CloseSearch">
                     <Icon Name="x" Size="16" />
                 </button>
             </div>
@@ -122,7 +134,10 @@
                 @if (string.IsNullOrWhiteSpace(searchQuery))
                 {
                     <div style="padding: 24px; text-align: center; color: var(--muted); font-size: 11px;">
-                        Type to search recipes, active tickets, and pantry ingredients.
+                        Type to search recipes, active table tickets, and pantry ingredients.
+                        <div style="margin-top: 6px; font-size: 10px; color: var(--faint);">
+                            Try searching "Cod", "Table 7", "Cooler", or "Fish".
+                        </div>
                     </div>
                 }
                 else
@@ -131,14 +146,18 @@
                     @if (!results.Any())
                     {
                         <div style="padding: 24px; text-align: center; color: var(--muted); font-size: 11px;">
-                            No results found for "@searchQuery".
+                            No matching items found for "@searchQuery".
                         </div>
                     }
                     else
                     {
-                        @foreach (var res in results)
+                        for (int i = 0; i < results.Count; i++)
                         {
-                            <div class="search-hit-item" @onclick="() => NavigateToSearchResult(res.Url)">
+                            var res = results[i];
+                            var isFocused = i == selectedSearchIndex;
+                            <div class="search-hit-item @(isFocused ? "focused" : "")"
+                                 style="@(isFocused ? "background: var(--linen); border-left: 3px solid var(--clay);" : "")"
+                                 @onclick="() => NavigateToSearchResult(res.Url)">
                                 <Icon Name="@res.IconName" Size="16" />
                                 <div class="search-hit-copy">
                                     <strong>@res.Title</strong>
@@ -164,11 +183,29 @@
     private bool showNotifications = false;
     private bool showSearchModal = false;
     private string searchQuery = "";
+    private int selectedSearchIndex = 0;
+    private DotNetObjectReference<MainLayout>? dotNetRef;
 
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += HandleLocationChanged;
         Culinary.OnChange += HandleStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("culinaryShortcuts.init", dotNetRef);
+            }
+            catch
+            {
+                // Fallback for environments where JS is unavailable
+            }
+        }
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -191,6 +228,75 @@
             if (relative.StartsWith("kitchen")) return "Kitchen Display";
             if (relative.StartsWith("pantry")) return "Inventory Control";
             return "Menu Intelligence";
+        }
+    }
+
+    private async Task OpenSearch()
+    {
+        showNotifications = false;
+        showSearchModal = true;
+        searchQuery = "";
+        selectedSearchIndex = 0;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("culinaryShortcuts.focusSearchInput");
+        }
+        catch { }
+    }
+
+    private void CloseSearch()
+    {
+        showSearchModal = false;
+    }
+
+    [JSInvokable]
+    public async Task ToggleSearchModal()
+    {
+        if (showSearchModal)
+        {
+            showSearchModal = false;
+        }
+        else
+        {
+            await OpenSearch();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void CloseModals()
+    {
+        showSearchModal = false;
+        showNotifications = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSearchKeydown(KeyboardEventArgs e)
+    {
+        var results = Culinary.SearchAll(searchQuery);
+
+        if (e.Key == "Escape")
+        {
+            CloseSearch();
+            return;
+        }
+
+        if (!results.Any()) return;
+
+        if (e.Key == "ArrowDown")
+        {
+            selectedSearchIndex = Math.Min(selectedSearchIndex + 1, results.Count - 1);
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            selectedSearchIndex = Math.Max(selectedSearchIndex - 1, 0);
+        }
+        else if (e.Key == "Enter")
+        {
+            if (selectedSearchIndex >= 0 && selectedSearchIndex < results.Count)
+            {
+                NavigateToSearchResult(results[selectedSearchIndex].Url);
+            }
         }
     }
 
@@ -227,5 +333,6 @@
     {
         Navigation.LocationChanged -= HandleLocationChanged;
         Culinary.OnChange -= HandleStateChanged;
+        dotNetRef?.Dispose();
     }
 }

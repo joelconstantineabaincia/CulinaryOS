@@ -9,7 +9,7 @@
     <!-- Page Heading -->
     <div class="page-heading">
         <div>
-            <div class="eyebrow">Menu · Fall dinner 2025</div>
+            <div class="eyebrow">@Culinary.ActiveMenuSeason &middot; Dynamic Modeling</div>
             <h1>Recipe Costing & Menu Engineering</h1>
             <p>Model profitable recipes and optimize contribution margin.</p>
         </div>
@@ -60,7 +60,7 @@
                         <input class="form-input" type="number" step="0.50" min="1" max="500" @bind="menuPrice" @bind:after="OnPriceChanged" />
                     </div>
                     <div class="form-group">
-                        <label>Weekly Sales</label>
+                        <label>Weekly Volume</label>
                         <input class="form-input" type="number" min="0" @bind="weeklyVolume" />
                     </div>
                 </div>
@@ -138,7 +138,10 @@
                     <div class="margin-copy">
                         <span>Projected contribution</span>
                         <strong>@ProjectedContribution.ToString("C") <small>per plate at $@menuPrice.ToString("0.00")</small></strong>
-                        <p><Icon Name="trend" Size="14" /> Food cost: @((menuPrice > 0 ? (FoodCostOnly / menuPrice) * 100 : 0).ToString("0.0"))%</p>
+                        <p>
+                            <Icon Name="trend" Size="14" />
+                            @(Math.Abs(MarginDifferenceVsCategory).ToString("0.1"))% @(MarginDifferenceVsCategory >= 0 ? "above" : "below") @draftCategory category avg.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -160,23 +163,23 @@
             <div class="section-header">
                 <div>
                     <h2>Menu profitability matrix</h2>
-                    <p>@Culinary.MenuItems.Count dishes · Average margin @(Culinary.MenuItems.Any() ? Culinary.MenuItems.Average(m => m.ProfitMargin).ToString("0.0") : "0.0")%</p>
+                    <p>@Culinary.MenuItems.Count dishes &middot; Average margin @(Culinary.MenuItems.Any() ? Culinary.MenuItems.Average(m => m.ProfitMargin).ToString("0.0") : "0.0")%</p>
                 </div>
                 <!-- Interactive Filter Controls -->
                 <div style="display: flex; gap: 6px; align-items: center;">
                     <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="selectedCategoryFilter">
-                        <option value="All">All Categories</option>
-                        <option value="Starters">Starters</option>
-                        <option value="Mains">Mains</option>
-                        <option value="Desserts">Desserts</option>
+                        <option value="All">All Categories (@Culinary.MenuItems.Count)</option>
+                        <option value="Starters">Starters (@Culinary.MenuItems.Count(m => m.Category == "Starters"))</option>
+                        <option value="Mains">Mains (@Culinary.MenuItems.Count(m => m.Category == "Mains"))</option>
+                        <option value="Desserts">Desserts (@Culinary.MenuItems.Count(m => m.Category == "Desserts"))</option>
                     </select>
 
                     <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="selectedClassFilter">
                         <option value="All">All Classes</option>
-                        <option value="Star">Stars</option>
-                        <option value="Plowhorse">Plowhorses</option>
-                        <option value="Puzzle">Puzzles</option>
-                        <option value="Dog">Dogs</option>
+                        <option value="Star">Stars (@Culinary.MenuItems.Count(m => Culinary.GetClassification(m) == "Star"))</option>
+                        <option value="Plowhorse">Plowhorses (@Culinary.MenuItems.Count(m => Culinary.GetClassification(m) == "Plowhorse"))</option>
+                        <option value="Puzzle">Puzzles (@Culinary.MenuItems.Count(m => Culinary.GetClassification(m) == "Puzzle"))</option>
+                        <option value="Dog">Dogs (@Culinary.MenuItems.Count(m => Culinary.GetClassification(m) == "Dog"))</option>
                     </select>
                 </div>
             </div>
@@ -328,6 +331,17 @@
         }
     }
 
+    private decimal CategoryAverageMargin
+    {
+        get
+        {
+            var categoryDishes = Culinary.MenuItems.Where(m => m.Category == draftCategory).ToList();
+            return categoryDishes.Any() ? categoryDishes.Average(m => m.ProfitMargin) : 65.0m;
+        }
+    }
+
+    private decimal MarginDifferenceVsCategory => TargetMargin - CategoryAverageMargin;
+
     private IEnumerable<IGrouping<string, FoodSprint.Models.MenuItem>> FilteredGroupedCategories
     {
         get
@@ -389,7 +403,6 @@
     {
         if (targetFoodCost > 0 && FoodCostOnly > 0)
         {
-            // Suggest price based on target food cost %
             menuPrice = Math.Round(FoodCostOnly / ((decimal)targetFoodCost / 100m), 2);
         }
     }
