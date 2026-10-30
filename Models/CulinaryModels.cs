@@ -2,16 +2,27 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FoodSprint.Models
 {
+    public class SubIngredient
+    {
+        [Required(ErrorMessage = "Ingredient name is required.")]
+        public string Name { get; set; } = string.Empty;
+
+        public string Detail { get; set; } = string.Empty;
+
+        [Range(0.01, 1000.0, ErrorMessage = "Cost must be greater than zero.")]
+        public decimal Cost { get; set; }
+    }
+
     public class MenuItem
     {
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Dish name is required.")]
-        [StringLength(40, MinimumLength = 2, ErrorMessage = "Name must be 2–40 characters.")]
+        [StringLength(50, MinimumLength = 2, ErrorMessage = "Name must be 2–50 characters.")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Category is required.")]
-        public string Category { get; set; } = "Mains";
+        public string Category { get; set; } = "Mains"; // Starters, Mains, Desserts
 
         [Required]
         [Range(1.00, 500.00, ErrorMessage = "Price must be between $1.00 and $500.00.")]
@@ -27,8 +38,27 @@ namespace FoodSprint.Models
         public bool IsVegan { get; set; }
         public string Allergens { get; set; } = string.Empty;
         public bool IsAvailable { get; set; } = true;
+        public int WeeklyVolume { get; set; } = 100;
+
+        public List<SubIngredient> SubIngredients { get; set; } = new();
 
         public decimal ProfitMargin => MenuPrice > 0 ? ((MenuPrice - FoodCost) / MenuPrice) * 100 : 0;
+        public decimal ContributionMargin => MenuPrice - FoodCost - PrepLabor;
+    }
+
+    public class TicketCourseItem
+    {
+        public int Quantity { get; set; } = 1;
+        public string Name { get; set; } = string.Empty;
+        public string? Modifier { get; set; }
+        public string? AllergyBadge { get; set; }
+    }
+
+    public class TicketCourse
+    {
+        public string CourseName { get; set; } = "Course 1 (Mains)";
+        public string Status { get; set; } = "Cooking"; // Plated, Fire, Cooking
+        public List<TicketCourseItem> Items { get; set; } = new();
     }
 
     public class KitchenTicketItemDetail
@@ -42,10 +72,13 @@ namespace FoodSprint.Models
     {
         public int TicketId { get; set; }
         public int TableNumber { get; set; }
-        public int Guests { get; set; }
-        public string ActiveCourse { get; set; } = "Mains"; // Starters, Mains, Dessert
+        public int Guests { get; set; } = 2;
+        public string ServerName { get; set; } = "Server";
+        public string OrderNumber { get; set; } = string.Empty;
+        public string ActiveCourse { get; set; } = "Mains"; // Starters, Mains, Desserts
         public List<string> Items { get; set; } = new();
         public List<KitchenTicketItemDetail> ItemDetails { get; set; } = new();
+        public List<TicketCourse> Courses { get; set; } = new();
         public string Station { get; set; } = "Grill"; // Sauté, Grill, Pastry, Cold Bar, Garde Manger, Hot Line
         public string AllergyAlert { get; set; } = string.Empty;
         public int ElapsedMinutes { get; set; } = 8;
@@ -53,6 +86,9 @@ namespace FoodSprint.Models
         public bool IsRush { get; set; }
         public string Status { get; set; } = "Cooking"; // Cooking, Plated, Served
         public bool ExpoCalled { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsCriticalAllergen => !string.IsNullOrWhiteSpace(AllergyAlert) && !AllergyAlert.Equals("None", StringComparison.OrdinalIgnoreCase);
     }
 
     public class PantryItem
@@ -72,7 +108,30 @@ namespace FoodSprint.Models
         public string FreshnessVariant { get; set; } = "success"; // success, warning, danger
         public int ParPercentage { get; set; } = 72; // e.g. 72, 46, 88, 31
         public decimal UnitCost { get; set; } = 12.00m;
+        public string LotNumber { get; set; } = string.Empty;
+        public string LocationRack { get; set; } = string.Empty;
+        public string Supplier { get; set; } = string.Empty;
 
         public bool IsLowStock => CurrentStock <= MinThreshold || ParPercentage < 50;
+    }
+
+    public class SystemNotification
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Severity { get; set; } = "info"; // info, warning, danger
+        public string LinkUrl { get; set; } = "/";
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public bool IsRead { get; set; }
+    }
+
+    public class SearchResultItem
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Subtitle { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public string IconName { get; set; } = "sparkle";
     }
 }

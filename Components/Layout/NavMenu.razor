@@ -1,3 +1,6 @@
+@inject FoodSprint.Services.CulinaryService Culinary
+@implements IDisposable
+
 <aside class="sidebar">
     <div class="brand">
         <div class="brand-mark"><Icon Name="brand" Size="22" /></div>
@@ -8,12 +11,17 @@
     </div>
 
     <div class="shift-card">
-        <div class="shift-label"><span class="status-dot"></span> Dinner Service Active</div>
+        <div class="shift-label">
+            <span class="status-dot" style="@(Culinary.IsShiftActive ? "" : "background: var(--muted); box-shadow: none;")"></span>
+            @(Culinary.IsShiftActive ? "Dinner Service Active" : "Service Standby / Prep")
+        </div>
         <div class="shift-load">
             <span>Table load</span>
-            <strong>18 / 24</strong>
+            <strong>@(Culinary.IsShiftActive ? $"{Culinary.TableLoad} / {Culinary.TableCapacity}" : "0 / 24")</strong>
         </div>
-        <div class="mini-progress"><span></span></div>
+        <div class="mini-progress">
+            <span style="width: @(Culinary.IsShiftActive ? "75%" : "0%"); background: @(Culinary.IsShiftActive ? "var(--sage)" : "var(--muted)");"></span>
+        </div>
     </div>
 
     <nav class="nav" aria-label="Primary navigation">
@@ -36,13 +44,90 @@
     </nav>
 
     <div class="sidebar-footer">
-        <div class="avatar">MP</div>
+        <div class="avatar">@GetInitials(Culinary.ActiveRole)</div>
         <div class="profile-copy">
-            <strong>Station 02</strong>
-            <span>Expo Lead</span>
+            <strong>@Culinary.ActiveStation</strong>
+            <span>@Culinary.ActiveRole</span>
         </div>
-        <button class="icon-button" aria-label="Station settings" type="button">
+        <button class="icon-button" aria-label="Station settings" type="button" @onclick="() => showStationModal = true">
             <Icon Name="sliders" Size="17" />
         </button>
     </div>
 </aside>
+
+@if (showStationModal)
+{
+    <div class="modal-backdrop" @onclick="() => showStationModal = false">
+        <div class="modal-card" style="max-width: 380px;" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Station & Profile Configuration</h3>
+                <button class="icon-button" type="button" @onclick="() => showStationModal = false">
+                    <Icon Name="x" Size="16" />
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Assigned Station</label>
+                    <select class="form-select" @bind="tempStation">
+                        <option value="Station 01">Station 01 · Garde Manger</option>
+                        <option value="Station 02">Station 02 · Expo & Pass</option>
+                        <option value="Station 03">Station 03 · Hot Line & Grill</option>
+                        <option value="Station 04">Station 04 · Sauté & Pasta</option>
+                        <option value="Station 05">Station 05 · Pastry Bar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Shift Role</label>
+                    <select class="form-select" @bind="tempRole">
+                        <option value="Expo Lead">Expo Lead</option>
+                        <option value="Executive Chef">Executive Chef</option>
+                        <option value="Sous Chef">Sous Chef</option>
+                        <option value="Line Cook">Line Cook</option>
+                        <option value="Pastry Chef">Pastry Chef</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="button outline-button" type="button" @onclick="() => showStationModal = false">Cancel</button>
+                <button class="button primary-button" type="button" @onclick="SaveStationConfig">Save Changes</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showStationModal = false;
+    private string tempStation = "Station 02";
+    private string tempRole = "Expo Lead";
+
+    protected override void OnInitialized()
+    {
+        tempStation = Culinary.ActiveStation;
+        tempRole = Culinary.ActiveRole;
+        Culinary.OnChange += HandleStateChange;
+    }
+
+    private void HandleStateChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SaveStationConfig()
+    {
+        Culinary.UpdateStationSettings(tempStation, tempRole);
+        showStationModal = false;
+    }
+
+    private string GetInitials(string role)
+    {
+        if (string.IsNullOrWhiteSpace(role)) return "OP";
+        var parts = role.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2) return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+        return role.Substring(0, Math.Min(2, role.Length)).ToUpperInvariant();
+    }
+
+    public void Dispose()
+    {
+        Culinary.OnChange -= HandleStateChange;
+    }
+}

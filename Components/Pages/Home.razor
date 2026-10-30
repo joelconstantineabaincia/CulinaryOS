@@ -1,6 +1,7 @@
 @page "/"
 @rendermode InteractiveServer
 @inject FoodSprint.Services.CulinaryService Culinary
+@inject NavigationManager Navigation
 
 <PageTitle>Recipe Costing & Menu Engineering · CulinaryOS</PageTitle>
 
@@ -31,15 +32,43 @@
             <div class="section-header">
                 <div>
                     <h2>Cost estimator</h2>
-                    <p>@draftDishName</p>
+                    <p>@(isEditingExisting ? $"Editing: {draftDishName}" : "Creating new dish")</p>
                 </div>
-                <span class="draft-pill">Draft</span>
+                <span class="draft-pill">@(isEditingExisting ? "Active" : "Draft")</span>
             </div>
 
             <div class="estimator-body">
+                <!-- Dish Name & Category Inputs -->
+                <div class="form-row" style="margin-bottom: 12px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Dish Name</label>
+                        <input class="form-input" @bind="draftDishName" placeholder="e.g. Pan-Seared Halibut" />
+                    </div>
+                </div>
+
+                <div class="form-row" style="margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select class="form-select" @bind="draftCategory">
+                            <option value="Starters">Starters</option>
+                            <option value="Mains">Mains</option>
+                            <option value="Desserts">Desserts</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Menu Price ($)</label>
+                        <input class="form-input" type="number" step="0.50" min="1" max="500" @bind="menuPrice" @bind:after="OnPriceChanged" />
+                    </div>
+                    <div class="form-group">
+                        <label>Weekly Sales</label>
+                        <input class="form-input" type="number" min="0" @bind="weeklyVolume" />
+                    </div>
+                </div>
+
+                <!-- Target Food Cost Slider -->
                 <div class="field-label">
                     <span>Target food cost</span>
-                    <strong>@foodCost%</strong>
+                    <strong>@targetFoodCost%</strong>
                 </div>
 
                 <input aria-label="Target food cost"
@@ -47,9 +76,10 @@
                        max="45"
                        min="15"
                        type="range"
-                       @bind="foodCost"
+                       @bind="targetFoodCost"
                        @bind:event="oninput"
-                       style="--range-progress: @(((foodCost - 15) / 30.0) * 100)%;" />
+                       @bind:after="OnTargetFoodCostSliderChanged"
+                       style="--range-progress: @(((targetFoodCost - 15) / 30.0) * 100)%;" />
 
                 <div class="range-labels">
                     <span>15%</span>
@@ -60,30 +90,46 @@
                 <!-- Sub-recipe breakdown table -->
                 <div class="ingredient-list">
                     <div class="ingredient-list-head">
-                        <span>Sub-recipe breakdown</span>
+                        <span>Sub-recipe breakdown (@ingredients.Count items)</span>
                         <span>Cost</span>
                     </div>
 
                     @foreach (var ing in ingredients)
                     {
                         <div class="cost-line">
-                            <div>
+                            <div style="flex: 1;">
                                 <strong>@ing.Name</strong>
                                 <span>@ing.Detail</span>
                             </div>
-                            <strong>@ing.Cost.ToString("C")</strong>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" step="0.10" min="0.05" style="width: 65px; padding: 3px 5px; font-size: 10px; border: 1px solid var(--border-strong); border-radius: 4px;"
+                                       @bind="ing.Cost" />
+                                <button class="icon-button" style="color: var(--coral-deep); padding: 2px;" type="button" title="Remove ingredient" @onclick="() => RemoveIngredient(ing)">
+                                    <Icon Name="trash" Size="14" />
+                                </button>
+                            </div>
                         </div>
                     }
 
+                    <!-- Add new ingredient sub-row -->
+                    <div style="padding: 8px 10px; background: var(--linen); display: flex; gap: 6px; align-items: center; border-bottom: 1px solid var(--border);">
+                        <input class="form-input" style="flex: 1.5; padding: 4px 6px; font-size: 9px;" placeholder="Ingredient name..." @bind="newIngName" />
+                        <input class="form-input" style="flex: 1; padding: 4px 6px; font-size: 9px;" placeholder="Portion/detail..." @bind="newIngDetail" />
+                        <input class="form-input" type="number" step="0.10" min="0.10" style="width: 55px; padding: 4px 6px; font-size: 9px;" placeholder="$" @bind="newIngCost" />
+                        <button class="button outline-button" style="padding: 4px 8px; font-size: 9px; min-height: 24px;" type="button" @onclick="AddIngredient">
+                            <Icon Name="plus" Size="12" /> Add
+                        </button>
+                    </div>
+
                     <div class="cost-total">
-                        <span>Total plate cost</span>
+                        <span>Total plate cost (Food + Labor)</span>
                         <strong>$@TotalPlateCost.ToString("0.00")</strong>
                     </div>
                 </div>
 
                 <!-- Dynamic Margin Panel with Conic-Gradient Margin Dial -->
                 <div class="margin-panel">
-                    <div class="margin-dial" style="--dial-value: @(TargetMargin * 3.6)deg;">
+                    <div class="margin-dial" style="--dial-value: @(Math.Clamp(TargetMargin, 0, 100) * 3.6)deg;">
                         <div>
                             <strong>@TargetMargin%</strong>
                             <span>margin</span>
@@ -91,13 +137,19 @@
                     </div>
                     <div class="margin-copy">
                         <span>Projected contribution</span>
-                        <strong>@ProjectedContribution.ToString("C") <small>per plate at $@menuPrice.ToString("0")</small></strong>
-                        <p><Icon Name="trend" Size="14" /> 3.2% above category avg.</p>
+                        <strong>@ProjectedContribution.ToString("C") <small>per plate at $@menuPrice.ToString("0.00")</small></strong>
+                        <p><Icon Name="trend" Size="14" /> Food cost: @((menuPrice > 0 ? (FoodCostOnly / menuPrice) * 100 : 0).ToString("0.0"))%</p>
                     </div>
                 </div>
             </div>
 
             <div class="estimator-footer">
+                @if (isEditingExisting)
+                {
+                    <button class="button danger-button" type="button" @onclick="DeleteRecipe">
+                        <Icon Name="trash" Size="13" /> Delete
+                    </button>
+                }
                 <button class="button outline-button" type="button" @onclick="ResetEstimator">Reset</button>
                 <button class="button primary-button" type="button" @onclick="SaveRecipe">Save recipe</button>
             </div>
@@ -110,9 +162,23 @@
                     <h2>Menu profitability matrix</h2>
                     <p>@Culinary.MenuItems.Count dishes · Average margin @(Culinary.MenuItems.Any() ? Culinary.MenuItems.Average(m => m.ProfitMargin).ToString("0.0") : "0.0")%</p>
                 </div>
-                <button class="button outline-button" type="button" @onclick="FilterMenu">
-                    Dinner menu <Icon Name="chevron" Size="13" />
-                </button>
+                <!-- Interactive Filter Controls -->
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="selectedCategoryFilter">
+                        <option value="All">All Categories</option>
+                        <option value="Starters">Starters</option>
+                        <option value="Mains">Mains</option>
+                        <option value="Desserts">Desserts</option>
+                    </select>
+
+                    <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="selectedClassFilter">
+                        <option value="All">All Classes</option>
+                        <option value="Star">Stars</option>
+                        <option value="Plowhorse">Plowhorses</option>
+                        <option value="Puzzle">Puzzles</option>
+                        <option value="Dog">Dogs</option>
+                    </select>
+                </div>
             </div>
 
             <div class="matrix-head">
@@ -125,7 +191,7 @@
                 <span>Status</span>
             </div>
 
-            @foreach (var group in GroupedCategories)
+            @foreach (var group in FilteredGroupedCategories)
             {
                 <div class="menu-group">
                     <div class="group-title">
@@ -135,14 +201,15 @@
 
                     @foreach (var dish in group)
                     {
-                        var isSelected = dish.Name.Equals(draftDishName, StringComparison.OrdinalIgnoreCase);
+                        var isSelected = dish.Id == selectedDishId || dish.Name.Equals(draftDishName, StringComparison.OrdinalIgnoreCase);
+                        var classification = Culinary.GetClassification(dish);
                         <div class="matrix-row @(isSelected ? "selected" : "")" style="cursor: pointer;" @onclick="() => SelectDish(dish)">
                             <strong>@dish.Name</strong>
                             <span>@dish.FoodCost.ToString("C")</span>
                             <span>@dish.MenuPrice.ToString("C")</span>
                             <span class="margin-chip">@dish.ProfitMargin.ToString("0.0")%</span>
-                            <span class="class-chip @GetClassChipClass(dish)">@GetClassification(dish)</span>
-                            <span class="sales-volume">@GetSalesVolume(dish)</span>
+                            <span class="class-chip @classification.ToLowerInvariant()">@classification</span>
+                            <span class="sales-volume">@dish.WeeklyVolume sold/wk</span>
                             <button class="menu-status" type="button" @onclick="() => ToggleDishStatus(dish)" @onclick:stopPropagation="true">
                                 <span class="tiny-switch @(dish.IsAvailable ? "active" : "")"><i /></span>
                                 @(dish.IsAvailable ? "Active" : "86'd")
@@ -156,26 +223,90 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "dish")]
+    public string? QueryDish { get; set; }
+
+    private int? selectedDishId = 5; // Default: Roasted Atlantic Cod
+    private bool isEditingExisting = true;
     private string draftDishName = "Roasted Atlantic Cod";
     private string draftCategory = "Mains";
-    private int foodCost = 31;
+    private int targetFoodCost = 31;
     private decimal menuPrice = 36.00m;
+    private int weeklyVolume = 148;
     private string saveAlertMessage = "";
 
-    private class SubIngredient
+    // Sub-ingredient inputs for inline adding
+    private string newIngName = "";
+    private string newIngDetail = "";
+    private decimal newIngCost = 2.00m;
+
+    private string selectedCategoryFilter = "All";
+    private string selectedClassFilter = "All";
+
+    private List<FoodSprint.Models.SubIngredient> ingredients = new();
+
+    protected override void OnInitialized()
     {
-        public string Name { get; set; } = "";
-        public string Detail { get; set; } = "";
-        public decimal Cost { get; set; }
+        LoadDishIntoEstimator();
     }
 
-    private List<SubIngredient> ingredients = new()
+    protected override void OnParametersSet()
     {
-        new SubIngredient { Name = "Atlantic cod loin", Detail = "220 g · portion", Cost = 8.20m },
-        new SubIngredient { Name = "Miso marinade", Detail = "45 ml · sub-recipe", Cost = 1.85m },
-        new SubIngredient { Name = "Baby bok choy", Detail = "160 g · trimmed", Cost = 2.55m },
-        new SubIngredient { Name = "Prep & line labor", Detail = "12 min · blended rate", Cost = 4.80m },
-    };
+        if (!string.IsNullOrWhiteSpace(QueryDish))
+        {
+            var match = Culinary.MenuItems.FirstOrDefault(m => m.Name.Contains(QueryDish, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                SelectDish(match);
+            }
+        }
+    }
+
+    private void LoadDishIntoEstimator()
+    {
+        var dish = Culinary.MenuItems.FirstOrDefault(m => m.Id == selectedDishId) ?? Culinary.MenuItems.FirstOrDefault();
+        if (dish != null)
+        {
+            selectedDishId = dish.Id;
+            isEditingExisting = true;
+            draftDishName = dish.Name;
+            draftCategory = dish.Category;
+            menuPrice = dish.MenuPrice;
+            weeklyVolume = dish.WeeklyVolume;
+            targetFoodCost = (int)Math.Clamp(dish.MenuPrice > 0 ? (dish.FoodCost / dish.MenuPrice) * 100 : 31, 15, 45);
+            ingredients = dish.SubIngredients.Select(i => new FoodSprint.Models.SubIngredient
+            {
+                Name = i.Name,
+                Detail = i.Detail,
+                Cost = i.Cost
+            }).ToList();
+
+            if (!ingredients.Any())
+            {
+                ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Main protein / core ingredient", Detail = "Fresh portion", Cost = dish.FoodCost * 0.65m });
+                ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Garnish & sauce reduction", Detail = "House prepared", Cost = dish.FoodCost * 0.35m });
+                ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Kitchen line labor", Detail = $"{dish.PrepMinutes} min line prep", Cost = dish.PrepLabor > 0 ? dish.PrepLabor : 4.00m });
+            }
+        }
+    }
+
+    private decimal FoodCostOnly
+    {
+        get
+        {
+            var nonLabor = ingredients.Where(i => !i.Name.Contains("labor", StringComparison.OrdinalIgnoreCase)).ToList();
+            return nonLabor.Any() ? nonLabor.Sum(i => i.Cost) : TotalPlateCost * 0.7m;
+        }
+    }
+
+    private decimal LaborCostOnly
+    {
+        get
+        {
+            var labor = ingredients.FirstOrDefault(i => i.Name.Contains("labor", StringComparison.OrdinalIgnoreCase));
+            return labor?.Cost ?? 4.00m;
+        }
+    }
 
     private decimal TotalPlateCost => ingredients.Sum(i => i.Cost);
 
@@ -183,9 +314,8 @@
     {
         get
         {
-            if (foodCost == 31 && menuPrice == 36.00m) return 68;
             if (menuPrice <= 0) return 0;
-            return (int)Math.Round(((menuPrice - (TotalPlateCost - 4.80m)) / menuPrice) * 100);
+            return (int)Math.Round(((menuPrice - FoodCostOnly) / menuPrice) * 100);
         }
     }
 
@@ -194,15 +324,27 @@
         get
         {
             decimal contrib = menuPrice - TotalPlateCost;
-            return contrib > 0 ? contrib : 18.60m;
+            return contrib;
         }
     }
 
-    private IEnumerable<IGrouping<string, FoodSprint.Models.MenuItem>> GroupedCategories
+    private IEnumerable<IGrouping<string, FoodSprint.Models.MenuItem>> FilteredGroupedCategories
     {
         get
         {
-            return Culinary.MenuItems
+            var query = Culinary.MenuItems.AsEnumerable();
+
+            if (selectedCategoryFilter != "All")
+            {
+                query = query.Where(m => m.Category.Equals(selectedCategoryFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (selectedClassFilter != "All")
+            {
+                query = query.Where(m => Culinary.GetClassification(m).Equals(selectedClassFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query
                 .OrderBy(m => m.Category == "Starters" ? 1 : m.Category == "Mains" ? 2 : 3)
                 .ThenBy(m => m.Name)
                 .GroupBy(m => m.Category);
@@ -211,99 +353,171 @@
 
     private void SelectDish(FoodSprint.Models.MenuItem dish)
     {
+        selectedDishId = dish.Id;
+        isEditingExisting = true;
         draftDishName = dish.Name;
         draftCategory = dish.Category;
         menuPrice = dish.MenuPrice;
-        foodCost = (int)Math.Clamp(dish.MenuPrice > 0 ? (dish.FoodCost / dish.MenuPrice) * 100 : 31, 15, 45);
-        saveAlertMessage = $"Loaded {dish.Name} into cost estimator.";
+        weeklyVolume = dish.WeeklyVolume;
+        targetFoodCost = (int)Math.Clamp(dish.MenuPrice > 0 ? (dish.FoodCost / dish.MenuPrice) * 100 : 31, 15, 45);
+        ingredients = dish.SubIngredients.Select(i => new FoodSprint.Models.SubIngredient
+        {
+            Name = i.Name,
+            Detail = i.Detail,
+            Cost = i.Cost
+        }).ToList();
+
+        if (!ingredients.Any())
+        {
+            ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Main protein / core ingredient", Detail = "Fresh portion", Cost = dish.FoodCost * 0.65m });
+            ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Garnish & sauce reduction", Detail = "House prepared", Cost = dish.FoodCost * 0.35m });
+            ingredients.Add(new FoodSprint.Models.SubIngredient { Name = "Kitchen line labor", Detail = $"{dish.PrepMinutes} min line prep", Cost = dish.PrepLabor > 0 ? dish.PrepLabor : 4.00m });
+        }
+
+        saveAlertMessage = $"Loaded '{dish.Name}' into cost estimator.";
+    }
+
+    private void OnPriceChanged()
+    {
+        if (menuPrice > 0 && FoodCostOnly > 0)
+        {
+            targetFoodCost = (int)Math.Clamp((FoodCostOnly / menuPrice) * 100, 15, 45);
+        }
+    }
+
+    private void OnTargetFoodCostSliderChanged()
+    {
+        if (targetFoodCost > 0 && FoodCostOnly > 0)
+        {
+            // Suggest price based on target food cost %
+            menuPrice = Math.Round(FoodCostOnly / ((decimal)targetFoodCost / 100m), 2);
+        }
+    }
+
+    private void AddIngredient()
+    {
+        if (string.IsNullOrWhiteSpace(newIngName)) return;
+
+        ingredients.Add(new FoodSprint.Models.SubIngredient
+        {
+            Name = newIngName.Trim(),
+            Detail = string.IsNullOrWhiteSpace(newIngDetail) ? "Portion item" : newIngDetail.Trim(),
+            Cost = Math.Max(0.10m, newIngCost)
+        });
+
+        newIngName = "";
+        newIngDetail = "";
+        newIngCost = 2.00m;
+    }
+
+    private void RemoveIngredient(FoodSprint.Models.SubIngredient ing)
+    {
+        ingredients.Remove(ing);
     }
 
     private void ToggleDishStatus(FoodSprint.Models.MenuItem dish)
     {
-        dish.IsAvailable = !dish.IsAvailable;
+        Culinary.ToggleMenuItemAvailability(dish.Id);
     }
 
     private void ResetEstimator()
     {
-        draftDishName = "Roasted Atlantic Cod";
-        draftCategory = "Mains";
-        foodCost = 31;
-        menuPrice = 36.00m;
-        saveAlertMessage = "Estimator reset to default.";
+        LoadDishIntoEstimator();
+        saveAlertMessage = "Estimator reset to saved recipe state.";
     }
 
     private void CreateNewRecipe()
     {
-        draftDishName = "Heirloom Halibut & Fennel";
+        isEditingExisting = false;
+        selectedDishId = null;
+        draftDishName = "New Specialty Dish";
         draftCategory = "Mains";
-        foodCost = 30;
-        menuPrice = 34.00m;
-        saveAlertMessage = "Drafting new recipe. Configure ingredients and click Save recipe.";
+        targetFoodCost = 30;
+        menuPrice = 32.00m;
+        weeklyVolume = 100;
+        ingredients = new List<FoodSprint.Models.SubIngredient>
+        {
+            new() { Name = "Fresh core protein/produce", Detail = "180 g · portioned", Cost = 7.50m },
+            new() { Name = "Side garnish & seasoning", Detail = "Fresh garnish", Cost = 1.80m },
+            new() { Name = "Line cook labor", Detail = "14 min prep", Cost = 4.20m }
+        };
+        saveAlertMessage = "Drafting new recipe. Edit dish name, ingredients, and click 'Save recipe'.";
     }
 
     private void SaveRecipe()
     {
-        var existing = Culinary.MenuItems.FirstOrDefault(m => m.Name.Equals(draftDishName, StringComparison.OrdinalIgnoreCase));
-        if (existing != null)
+        if (string.IsNullOrWhiteSpace(draftDishName))
         {
-            existing.MenuPrice = menuPrice;
-            existing.FoodCost = TotalPlateCost - 4.80m;
-            existing.PrepLabor = 4.80m;
-            existing.Category = draftCategory;
-            saveAlertMessage = $"Recipe '{existing.Name}' updated! Margin is now {existing.ProfitMargin:0.0}%.";
+            saveAlertMessage = "Error: Dish name is required.";
+            return;
         }
-        else
+
+        if (menuPrice <= 0)
         {
-            int nextId = (Culinary.MenuItems.Any() ? Culinary.MenuItems.Max(m => m.Id) : 0) + 1;
-            var newItem = new FoodSprint.Models.MenuItem
+            saveAlertMessage = "Error: Menu price must be greater than $0.";
+            return;
+        }
+
+        if (isEditingExisting && selectedDishId.HasValue)
+        {
+            var dish = Culinary.GetMenuItemById(selectedDishId.Value);
+            if (dish != null)
             {
-                Id = nextId,
-                Name = draftDishName,
-                Category = draftCategory,
-                MenuPrice = menuPrice,
-                FoodCost = TotalPlateCost - 4.80m,
-                PrepLabor = 4.80m,
-                IsAvailable = true
-            };
-            Culinary.MenuItems.Add(newItem);
-            saveAlertMessage = $"New recipe '{newItem.Name}' saved to catalog! Margin is {newItem.ProfitMargin:0.0}%.";
+                dish.Name = draftDishName.Trim();
+                dish.Category = draftCategory;
+                dish.MenuPrice = menuPrice;
+                dish.FoodCost = FoodCostOnly;
+                dish.PrepLabor = LaborCostOnly;
+                dish.WeeklyVolume = weeklyVolume;
+                dish.SubIngredients = ingredients.Select(i => new FoodSprint.Models.SubIngredient
+                {
+                    Name = i.Name,
+                    Detail = i.Detail,
+                    Cost = i.Cost
+                }).ToList();
+
+                Culinary.UpdateMenuItem(dish);
+                saveAlertMessage = $"Recipe '{dish.Name}' updated! Margin is {dish.ProfitMargin:0.0}%.";
+                return;
+            }
         }
-    }
 
-    private void FilterMenu()
-    {
-    }
-
-    private string GetClassification(FoodSprint.Models.MenuItem dish)
-    {
-        if (dish.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Hamachi", StringComparison.OrdinalIgnoreCase))
-            return "Star";
-        if (dish.Name.Contains("Duck", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Cake", StringComparison.OrdinalIgnoreCase))
-            return "Puzzle";
-        return "Plowhorse";
-    }
-
-    private string GetClassChipClass(FoodSprint.Models.MenuItem dish)
-    {
-        var c = GetClassification(dish).ToLowerInvariant();
-        return c switch
+        // Add new recipe
+        var newItem = new FoodSprint.Models.MenuItem
         {
-            "star" => "star",
-            "puzzle" => "puzzle",
-            _ => "plowhorse"
+            Name = draftDishName.Trim(),
+            Category = draftCategory,
+            MenuPrice = menuPrice,
+            FoodCost = FoodCostOnly,
+            PrepLabor = LaborCostOnly,
+            WeeklyVolume = weeklyVolume,
+            IsAvailable = true,
+            SubIngredients = ingredients.Select(i => new FoodSprint.Models.SubIngredient
+            {
+                Name = i.Name,
+                Detail = i.Detail,
+                Cost = i.Cost
+            }).ToList()
         };
+
+        Culinary.AddMenuItem(newItem);
+        selectedDishId = newItem.Id;
+        isEditingExisting = true;
+        saveAlertMessage = $"New recipe '{newItem.Name}' added to menu! Margin is {newItem.ProfitMargin:0.0}%.";
     }
 
-    private string GetSalesVolume(FoodSprint.Models.MenuItem dish)
+    private void DeleteRecipe()
     {
-        if (dish.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase) || dish.Name.Contains("Hamachi", StringComparison.OrdinalIgnoreCase))
-            return "142 sold/wk";
-        if (dish.Name.Contains("Burrata", StringComparison.OrdinalIgnoreCase))
-            return "118 sold/wk";
-        if (dish.Name.Contains("Duck", StringComparison.OrdinalIgnoreCase))
-            return "64 sold/wk";
-        if (dish.Name.Contains("Cake", StringComparison.OrdinalIgnoreCase))
-            return "48 sold/wk";
-        return "156 sold/wk";
+        if (selectedDishId.HasValue)
+        {
+            var dish = Culinary.GetMenuItemById(selectedDishId.Value);
+            if (dish != null)
+            {
+                Culinary.DeleteMenuItem(dish.Id);
+                saveAlertMessage = $"Dish '{dish.Name}' removed from catalog.";
+                selectedDishId = Culinary.MenuItems.FirstOrDefault()?.Id;
+                LoadDishIntoEstimator();
+            }
+        }
     }
 }

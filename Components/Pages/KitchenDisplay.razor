@@ -10,7 +10,7 @@
         <div>
             <div class="eyebrow">Dinner service · Live</div>
             <h1>Live KDS Rail</h1>
-            <p>12 open tickets across 4 stations</p>
+            <p>@FilteredTickets.Count() tickets on rail &middot; @Culinary.ActiveTickets.Count(t => t.IsRush) expedited</p>
         </div>
         <div class="heading-actions">
             <div class="legend">
@@ -18,192 +18,149 @@
                 <span class="dot amber"></span> Near par
                 <span class="dot coral"></span> Over par
             </div>
-            <button class="button outline-button" type="button" @onclick="ToggleStationFilter">
-                All stations <Icon Name="chevron" Size="14" />
+            
+            <!-- Station Filter Dropdown -->
+            <select class="form-select" style="font-size: 10px; padding: 5px 9px;" @bind="selectedStation">
+                <option value="All">All stations (@Culinary.ActiveTickets.Count)</option>
+                <option value="Garde Manger">Garde Manger (@Culinary.ActiveTickets.Count(t => t.Station == "Garde Manger"))</option>
+                <option value="Hot Line">Hot Line (@Culinary.ActiveTickets.Count(t => t.Station == "Hot Line"))</option>
+                <option value="Sauté">Sauté (@Culinary.ActiveTickets.Count(t => t.Station == "Sauté"))</option>
+                <option value="Grill">Grill (@Culinary.ActiveTickets.Count(t => t.Station == "Grill"))</option>
+                <option value="Pastry">Pastry (@Culinary.ActiveTickets.Count(t => t.Station == "Pastry"))</option>
+            </select>
+
+            <!-- Status View Filter -->
+            <select class="form-select" style="font-size: 10px; padding: 5px 9px;" @bind="selectedStatusFilter">
+                <option value="Active">Active (Cooking & Plated)</option>
+                <option value="Cooking">Cooking Only</option>
+                <option value="Plated">Plated Only</option>
+                <option value="All">All Statuses</option>
+            </select>
+
+            <button class="button primary-button" type="button" @onclick="() => showNewTicketModal = true">
+                <Icon Name="plus" Size="15" /> New ticket
             </button>
         </div>
     </div>
 
+    @if (!string.IsNullOrEmpty(statusAlert))
+    {
+        <div class="sage-pill mb-2" style="width: fit-content; font-size: 11px; padding: 8px 12px; margin-bottom: 10px;">
+            <span class="status-dot"></span> @statusAlert
+        </div>
+    }
+
     <!-- KDS Rail Grid -->
     <div class="kds-grid">
-        @foreach (var ticket in Culinary.ActiveTickets)
+        @if (!FilteredTickets.Any())
         {
-            var isCritical = ticket.TableNumber == 7 || (!string.IsNullOrEmpty(ticket.AllergyAlert) && ticket.AllergyAlert != "None");
-            var serverName = ticket.TableNumber == 4 ? "Chloe T." : ticket.TableNumber == 7 ? "Marcus L." : "Ana R.";
-            var orderNum = ticket.TableNumber == 4 ? "1084" : ticket.TableNumber == 7 ? "1091" : "1097";
-            var timerDisplay = !string.IsNullOrEmpty(ticket.ElapsedTimeString) ? ticket.ElapsedTimeString : $"{ticket.ElapsedMinutes:D2}:00";
+            <div style="grid-column: 1 / -1; padding: 48px; text-align: center; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius-card);">
+                <Icon Name="check" Size="32" Class="sage" />
+                <h3 style="font-family: 'DM Serif Display', serif; margin: 10px 0 6px;">Station All Clear</h3>
+                <p style="color: var(--muted); font-size: 11px;">No active tickets for the selected station and status filter.</p>
+                <button class="button outline-button" style="margin-top: 14px;" type="button" @onclick="ResetFilters">Reset filters</button>
+            </div>
+        }
+        else
+        {
+            @foreach (var ticket in FilteredTickets)
+            {
+                var isCritical = ticket.IsCriticalAllergen;
+                var isLate = ticket.ElapsedMinutes >= 12;
+                var timerDisplay = !string.IsNullOrEmpty(ticket.ElapsedTimeString) ? ticket.ElapsedTimeString : $"{ticket.ElapsedMinutes:D2}:00";
 
-            <article class="ticket @(isCritical ? "critical-ticket" : "")">
-                @if (isCritical)
-                {
-                    <div class="allergen-banner">
-                        <Icon Name="alert" Size="17" />
-                        <strong>CRITICAL ALLERGEN</strong>
-                        <span>Severe Peanut Anaphylaxis</span>
-                    </div>
-                }
+                <article class="ticket @(isCritical ? "critical-ticket" : "") @(ticket.IsRush ? "rush-ticket" : "")" style="@(ticket.IsRush ? "border-color: var(--clay); box-shadow: 0 0 0 1px var(--clay);" : "")">
+                    @if (isCritical)
+                    {
+                        <div class="allergen-banner">
+                            <Icon Name="alert" Size="17" />
+                            <strong>CRITICAL ALLERGEN</strong>
+                            <span>@ticket.AllergyAlert</span>
+                        </div>
+                    }
 
-                <div class="ticket-header">
-                    <div>
-                        <div class="table-title">Table @ticket.TableNumber</div>
-                        <div class="guest-count"><Icon Name="users" Size="14" /> @ticket.Guests guests</div>
-                        <div class="server-meta">Server: @serverName &middot; Dine-in #@orderNum</div>
+                    <div class="ticket-header">
+                        <div>
+                            <div class="table-title">Table @ticket.TableNumber</div>
+                            <div class="guest-count"><Icon Name="users" Size="14" /> @ticket.Guests guests</div>
+                            <div class="server-meta">Server: @ticket.ServerName &middot; Dine-in #@ticket.OrderNumber</div>
+                        </div>
+                        <div class="ticket-meta">
+                            <span class="station-pill">@ticket.Station</span>
+                            <span class="timer-pill @(isLate ? "late" : "")">
+                                @timerDisplay
+                                @if (isLate)
+                                {
+                                    <small>Exceeding Par</small>
+                                }
+                            </span>
+                        </div>
                     </div>
-                    <div class="ticket-meta">
-                        <span class="station-pill">@ticket.Station</span>
-                        <span class="timer-pill @(isCritical ? "late" : "")">
-                            @timerDisplay
-                            @if (isCritical)
+
+                    <div class="ticket-items">
+                        @if (ticket.Courses.Any())
+                        {
+                            @foreach (var course in ticket.Courses)
                             {
-                                <small>Exceeding Par</small>
-                            }
-                        </span>
-                    </div>
-                </div>
-
-                <div class="ticket-items">
-                    @if (ticket.TableNumber == 4)
-                    {
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 1 (Apps)</span>
-                                <strong>Plated</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">2</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Hamachi Crudo</div>
-                                    <div class="modifier">Extra citrus</div>
-                                </div>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Little Gem Salad</div>
-                                    <div class="modifier">No scallions</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 2 (Mains)</span>
-                                <strong>Fire</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Roasted Atlantic Cod</div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    else if (ticket.TableNumber == 7)
-                    {
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 1 (Apps)</span>
-                                <strong>Plated</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">
-                                        Charred Broccolini
-                                        <span class="allergy-chip">ALLERGY</span>
+                                <div class="course-group">
+                                    <div class="course-header">
+                                        <span>@course.CourseName</span>
+                                        <strong>@course.Status</strong>
                                     </div>
-                                    <div class="modifier">Clean pan &middot; fresh gloves</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 2 (Mains)</span>
-                                <strong>Fire</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">
-                                        Roasted Atlantic Cod
-                                        <span class="allergy-chip">NO PEANUT</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Carnaroli Risotto</div>
-                                    <div class="modifier">No shared garnish</div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    else if (ticket.TableNumber == 12)
-                    {
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 1 (Apps)</span>
-                                <strong>Plated</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Burrata & Persimmon</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>Course 2 (Mains)</span>
-                                <strong>Fire</strong>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Dry-Aged Duck</div>
-                                    <div class="modifier">Medium rare</div>
-                                </div>
-                            </div>
-                            <div class="order-row">
-                                <span class="quantity">1</span>
-                                <div class="order-copy">
-                                    <div class="order-name">Wild Mushroom Risotto</div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="course-group">
-                            <div class="course-header">
-                                <span>@ticket.ActiveCourse</span>
-                                <strong>@ticket.Status</strong>
-                            </div>
-                            @foreach (var item in ticket.Items)
-                            {
-                                <div class="order-row">
-                                    <span class="quantity">1</span>
-                                    <div class="order-copy">
-                                        <div class="order-name">@item</div>
-                                    </div>
+                                    @foreach (var item in course.Items)
+                                    {
+                                        <div class="order-row">
+                                            <span class="quantity">@item.Quantity</span>
+                                            <div class="order-copy">
+                                                <div class="order-name">
+                                                    @item.Name
+                                                    @if (!string.IsNullOrEmpty(item.AllergyBadge))
+                                                    {
+                                                        <span class="allergy-chip">@item.AllergyBadge</span>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(item.Modifier))
+                                                {
+                                                    <div class="modifier">@item.Modifier</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             }
-                        </div>
-                    }
-                </div>
+                        }
+                        else
+                        {
+                            <div class="course-group">
+                                <div class="course-header">
+                                    <span>@ticket.ActiveCourse</span>
+                                    <strong>@ticket.Status</strong>
+                                </div>
+                                @foreach (var item in ticket.Items)
+                                {
+                                    <div class="order-row">
+                                        <span class="quantity">1</span>
+                                        <div class="order-copy">
+                                            <div class="order-name">@item</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
 
-                <div class="ticket-actions">
-                    <button class="button expedite-button" type="button" @onclick="() => ToggleRush(ticket)">
-                        <Icon Name="bolt" Size="15" /> @(ticket.IsRush ? "Expedited" : "Expedite")
-                    </button>
-                    <button class="button primary-button" type="button" @onclick="() => CompleteTicket(ticket)">
-                        <Icon Name="check" Size="16" /> @(isCritical ? "Complete" : "Bump Ticket")
-                    </button>
-                </div>
-            </article>
+                    <div class="ticket-actions">
+                        <button class="button expedite-button" style="@(ticket.IsRush ? "background: var(--clay-soft); color: var(--clay-deep); border-color: var(--clay);" : "")"
+                                type="button" @onclick="() => ToggleRush(ticket)">
+                            <Icon Name="bolt" Size="15" /> @(ticket.IsRush ? "Expedited" : "Expedite")
+                        </button>
+                        <button class="button primary-button" type="button" @onclick="() => AdvanceTicket(ticket)">
+                            <Icon Name="check" Size="16" />
+                            @(ticket.Status == "Cooking" ? "Mark Plated" : "Bump Ticket")
+                        </button>
+                    </div>
+                </article>
+            }
         }
     </div>
 
@@ -213,28 +170,285 @@
             <Icon Name="sparkle" Size="18" />
             <span><strong>Service insight</strong> Garde Manger is clearing tickets 1m 12s faster than average.</span>
         </div>
-        <button type="button" @onclick="ViewAnalytics">
+        <button type="button" @onclick="() => showAnalyticsModal = true">
             View station analytics <Icon Name="chevron" Size="14" />
         </button>
     </div>
 </div>
 
+<!-- New Ticket Modal Dialog -->
+@if (showNewTicketModal)
+{
+    <div class="modal-backdrop" @onclick="() => showNewTicketModal = false">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Fire New Kitchen Ticket</h3>
+                <button class="icon-button" type="button" @onclick="() => showNewTicketModal = false">
+                    <Icon Name="x" Size="18" />
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Table Number</label>
+                        <input class="form-input" type="number" min="1" max="99" @bind="newTableNum" />
+                    </div>
+                    <div class="form-group">
+                        <label>Guests</label>
+                        <input class="form-input" type="number" min="1" max="20" @bind="newGuestCount" />
+                    </div>
+                    <div class="form-group">
+                        <label>Server</label>
+                        <input class="form-input" @bind="newServerName" placeholder="e.g. Marcus L." />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kitchen Station</label>
+                        <select class="form-select" @bind="newStation">
+                            <option value="Garde Manger">Garde Manger</option>
+                            <option value="Hot Line">Hot Line</option>
+                            <option value="Sauté">Sauté</option>
+                            <option value="Grill">Grill</option>
+                            <option value="Pastry">Pastry</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Allergy Alert</label>
+                        <input class="form-input" @bind="newAllergyAlert" placeholder="e.g. Severe Peanut Anaphylaxis, Gluten" />
+                    </div>
+                </div>
+
+                <div class="form-check" style="margin: 4px 0 8px;">
+                    <input type="checkbox" id="rushCheck" @bind="newIsRush" class="row-checkbox" />
+                    <label for="rushCheck" style="cursor: pointer; font-weight: 600;">Expedite / Rush Ticket (High Priority)</label>
+                </div>
+
+                <!-- Dishes selection -->
+                <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Select Menu Items to Fire</label>
+                    <div style="display: flex; gap: 6px; margin: 8px 0;">
+                        <select class="form-select" style="flex: 2;" @bind="selectedDishToAdd">
+                            @foreach (var dish in Culinary.MenuItems.Where(d => d.IsAvailable))
+                            {
+                                <option value="@dish.Name">@dish.Name (@dish.Category)</option>
+                            }
+                        </select>
+                        <input class="form-input" style="flex: 1.5;" placeholder="Special notes / modifier..." @bind="dishModifierToAdd" />
+                        <button class="button outline-button" type="button" @onclick="AddDishToNewTicket">
+                            <Icon Name="plus" Size="14" /> Add
+                        </button>
+                    </div>
+
+                    @if (ticketItemsToFire.Any())
+                    {
+                        <div style="background: var(--linen); border-radius: 6px; padding: 8px; margin-top: 8px;">
+                            @foreach (var item in ticketItemsToFire)
+                            {
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                    <span><strong>@item.Quantity &times; @item.Name</strong> @(!string.IsNullOrEmpty(item.Modifier) ? $"({item.Modifier})" : "")</span>
+                                    <button class="icon-button" style="color: var(--coral-deep); padding: 2px;" type="button" @onclick="() => ticketItemsToFire.Remove(item)">
+                                        <Icon Name="trash" Size="13" />
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="button outline-button" type="button" @onclick="() => showNewTicketModal = false">Cancel</button>
+                <button class="button primary-button" type="button" @onclick="SubmitNewTicket">Fire Ticket</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Station Analytics Modal -->
+@if (showAnalyticsModal)
+{
+    <div class="modal-backdrop" @onclick="() => showAnalyticsModal = false">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Station Analytics & Performance</h3>
+                <button class="icon-button" type="button" @onclick="() => showAnalyticsModal = false">
+                    <Icon Name="x" Size="18" />
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); margin: 0 0 10px;">
+                    <article class="metric-card">
+                        <div class="metric-icon sage"><Icon Name="clock" Size="17" /></div>
+                        <div class="metric-copy">
+                            <span>Average Ticket Time</span>
+                            <strong>8m 45s</strong>
+                            <small class="sage">Target: 10m 00s</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <div class="metric-icon coral"><Icon Name="bolt" Size="17" /></div>
+                        <div class="metric-copy">
+                            <span>Rush Orders</span>
+                            <strong>@Culinary.ActiveTickets.Count(t => t.IsRush) active</strong>
+                            <small class="coral">High priority</small>
+                        </div>
+                    </article>
+                </div>
+
+                <h4 style="font-size: 11px; margin: 10px 0 6px; text-transform: uppercase; color: var(--muted);">Live Station Breakdown</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    @foreach (var stationName in new[] { "Garde Manger", "Hot Line", "Sauté", "Grill", "Pastry" })
+                    {
+                        var count = Culinary.ActiveTickets.Count(t => t.Station == stationName);
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--linen); border-radius: 6px; font-size: 11px;">
+                            <strong>@stationName</strong>
+                            <span style="color: var(--muted);">@count tickets · @(count > 0 ? "Active Load" : "Idle")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="button primary-button" type="button" @onclick="() => showAnalyticsModal = false">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private string selectedStation = "All";
+    private string selectedStatusFilter = "Active";
+    private string statusAlert = "";
+
+    private bool showNewTicketModal = false;
+    private bool showAnalyticsModal = false;
+
+    // New Ticket Form State
+    private int newTableNum = 8;
+    private int newGuestCount = 4;
+    private string newServerName = "Marcus L.";
+    private string newStation = "Hot Line";
+    private string newAllergyAlert = "";
+    private bool newIsRush = false;
+    private string selectedDishToAdd = "Roasted Atlantic Cod";
+    private string dishModifierToAdd = "";
+    private List<FoodSprint.Models.TicketCourseItem> ticketItemsToFire = new();
+
+    protected override void OnInitialized()
+    {
+        if (Culinary.MenuItems.Any())
+        {
+            selectedDishToAdd = Culinary.MenuItems.First().Name;
+        }
+    }
+
+    private IEnumerable<FoodSprint.Models.KitchenTicket> FilteredTickets
+    {
+        get
+        {
+            var tickets = Culinary.ActiveTickets.AsEnumerable();
+
+            if (selectedStation != "All")
+            {
+                tickets = tickets.Where(t => t.Station.Equals(selectedStation, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (selectedStatusFilter == "Active")
+            {
+                tickets = tickets.Where(t => t.Status != "Served");
+            }
+            else if (selectedStatusFilter == "Cooking")
+            {
+                tickets = tickets.Where(t => t.Status == "Cooking");
+            }
+            else if (selectedStatusFilter == "Plated")
+            {
+                tickets = tickets.Where(t => t.Status == "Plated");
+            }
+
+            return tickets.OrderByDescending(t => t.IsRush).ThenBy(t => t.TicketId);
+        }
+    }
+
     private void ToggleRush(FoodSprint.Models.KitchenTicket ticket)
     {
-        ticket.IsRush = !ticket.IsRush;
+        Culinary.ToggleTicketRush(ticket.TicketId);
+        statusAlert = $"Table {ticket.TableNumber} rush status set to: {(ticket.IsRush ? "EXPEDITED" : "Normal")}.";
     }
 
-    private void CompleteTicket(FoodSprint.Models.KitchenTicket ticket)
+    private void AdvanceTicket(FoodSprint.Models.KitchenTicket ticket)
     {
-        ticket.Status = "Plated";
+        if (ticket.Status == "Cooking")
+        {
+            ticket.Status = "Plated";
+            statusAlert = $"Table {ticket.TableNumber} marked PLATED and ready for expo.";
+            Culinary.SaveToDisk();
+        }
+        else
+        {
+            ticket.Status = "Served";
+            Culinary.BumpTicket(ticket.TicketId);
+            statusAlert = $"Table {ticket.TableNumber} order cleared and bumped from rail.";
+        }
     }
 
-    private void ToggleStationFilter()
+    private void ResetFilters()
     {
+        selectedStation = "All";
+        selectedStatusFilter = "Active";
     }
 
-    private void ViewAnalytics()
+    private void AddDishToNewTicket()
     {
+        if (string.IsNullOrWhiteSpace(selectedDishToAdd)) return;
+
+        ticketItemsToFire.Add(new FoodSprint.Models.TicketCourseItem
+        {
+            Quantity = 1,
+            Name = selectedDishToAdd,
+            Modifier = dishModifierToAdd.Trim(),
+            AllergyBadge = !string.IsNullOrWhiteSpace(newAllergyAlert) ? "ALLERGY" : null
+        });
+
+        dishModifierToAdd = "";
+    }
+
+    private void SubmitNewTicket()
+    {
+        if (!ticketItemsToFire.Any())
+        {
+            // Add at least selected dish if none added yet
+            AddDishToNewTicket();
+        }
+
+        var newTicket = new FoodSprint.Models.KitchenTicket
+        {
+            TableNumber = newTableNum,
+            Guests = newGuestCount,
+            ServerName = string.IsNullOrWhiteSpace(newServerName) ? "Staff" : newServerName.Trim(),
+            OrderNumber = (1090 + new Random().Next(10, 99)).ToString(),
+            Station = newStation,
+            AllergyAlert = string.IsNullOrWhiteSpace(newAllergyAlert) ? "None" : newAllergyAlert.Trim(),
+            IsRush = newIsRush,
+            Status = "Cooking",
+            ElapsedMinutes = 0,
+            ElapsedTimeString = "00:00",
+            CreatedAt = DateTime.UtcNow,
+            Courses = new()
+            {
+                new()
+                {
+                    CourseName = "Course 1 (Mains)",
+                    Status = "Cooking",
+                    Items = new List<FoodSprint.Models.TicketCourseItem>(ticketItemsToFire)
+                }
+            },
+            Items = ticketItemsToFire.Select(i => $"{i.Quantity} {i.Name}").ToList()
+        };
+
+        Culinary.AddKitchenTicket(newTicket);
+        statusAlert = $"Fired new ticket for Table {newTicket.TableNumber} ({newTicket.Station})!";
+        ticketItemsToFire.Clear();
+        showNewTicketModal = false;
     }
 }

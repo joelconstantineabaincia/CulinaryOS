@@ -8,12 +8,12 @@
     <!-- Page Heading -->
     <div class="page-heading">
         <div>
-            <div class="eyebrow">Inventory · Updated 4 min ago</div>
+            <div class="eyebrow">Inventory · Updated just now</div>
             <h1>Fresh Pantry & Yield Tracker</h1>
             <p>Monitor par levels, freshness, and purchasing velocity.</p>
         </div>
-        <button class="button primary-button" type="button" @onclick="NewPurchaseOrder">
-            <Icon Name="plus" Size="16" /> New purchase order
+        <button class="button primary-button" type="button" @onclick="() => showNewItemModal = true">
+            <Icon Name="plus" Size="16" /> New ingredient / PO
         </button>
     </div>
 
@@ -24,13 +24,13 @@
         </div>
     }
 
-    <!-- 4 Top Metric Cards -->
+    <!-- 4 Top Metric Cards (Calculated dynamically) -->
     <div class="metrics-grid">
         <article class="metric-card">
             <div class="metric-icon sage"><Icon Name="trend" Size="17" /></div>
             <div class="metric-copy">
                 <span>Total Stock Par</span>
-                <strong>$12,450</strong>
+                <strong>$@Culinary.TotalStockParValue.ToString("N0")</strong>
                 <small class="sage">+4% vs last week</small>
             </div>
         </article>
@@ -39,8 +39,8 @@
             <div class="metric-icon amber"><Icon Name="clock" Size="17" /></div>
             <div class="metric-copy">
                 <span>Spoilage Risk (48h)</span>
-                <strong>$420</strong>
-                <small class="amber">8 items to review</small>
+                <strong>$@Culinary.SpoilageRisk48h.ToString("N0")</strong>
+                <small class="amber">@Culinary.ExpiringSoonCount items to review</small>
             </div>
         </article>
 
@@ -48,8 +48,8 @@
             <div class="metric-icon coral"><Icon Name="alert" Size="17" /></div>
             <div class="metric-copy">
                 <span>Items Below Par</span>
-                <strong>3 items</strong>
-                <small class="coral">Action recommended</small>
+                <strong>@Culinary.BelowParCount items</strong>
+                <small class="coral">@(Culinary.BelowParCount > 0 ? "Action recommended" : "Optimal levels")</small>
             </div>
         </article>
 
@@ -68,15 +68,26 @@
         <div class="section-header">
             <div>
                 <h2>Ingredient inventory</h2>
-                <p>48 tracked ingredients &middot; Sorted by freshness risk</p>
+                <p>@Culinary.PantryStock.Count tracked ingredients &middot; Real-time freshness status</p>
             </div>
-            <div class="table-tools">
-                <button class="button outline-button" type="button" @onclick="ToggleFilter">
-                    <Icon Name="sliders" Size="15" /> Filter
-                </button>
-                <button class="button outline-button" type="button" @onclick="ToggleStorage">
-                    All storage <Icon Name="chevron" Size="13" />
-                </button>
+            <div class="table-tools" style="display: flex; gap: 8px; align-items: center;">
+                <!-- Search Box -->
+                <input class="form-input" style="padding: 4px 8px; font-size: 10px; width: 140px;" placeholder="Search ingredient..." @bind="searchTerm" @bind:event="oninput" />
+
+                <!-- Filter Mode -->
+                <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="filterMode">
+                    <option value="All">All stock items</option>
+                    <option value="LowStock">Below Par only</option>
+                    <option value="Expiring">Expiring Soon (&le; 48h)</option>
+                </select>
+
+                <!-- Storage Location Filter -->
+                <select class="form-select" style="font-size: 10px; padding: 4px 8px;" @bind="storageFilter">
+                    <option value="All">All Storage</option>
+                    <option value="Walk-in Cooler">Walk-in Cooler</option>
+                    <option value="Dry Larder">Dry Larder</option>
+                    <option value="Freezer">Freezer</option>
+                </select>
             </div>
         </div>
 
@@ -88,59 +99,72 @@
                 <span>Stock level</span>
                 <span>Freshness</span>
                 <span>Unit cost</span>
-                <span />
+                <span style="text-align: right;">Actions</span>
             </div>
 
-            @foreach (var item in Culinary.PantryStock)
+            @if (!FilteredPantryItems.Any())
             {
-                var sku = GetItemSku(item);
-                var isChecked = selectedSkus.Contains(sku);
-                var freshState = GetFreshnessState(item);
-
-                <div class="table-row @(isChecked ? "selected" : "")">
-                    <input aria-label="Select @item.Name"
-                           checked="@isChecked"
-                           class="row-checkbox"
-                           @onchange="() => ToggleSku(sku)"
-                           type="checkbox" />
-
-                    <div class="ingredient">
-                        <div class="ingredient-icon"><Icon Name="leaf" Size="17" /></div>
-                        <div>
-                            <strong>@item.Name</strong>
-                            <small>@GetLotDescription(item)</small>
-                        </div>
-                    </div>
-
-                    <span class="location">@GetLocationDescription(item)</span>
-
-                    <div class="par-cell">
-                        <div>
-                            <strong>@item.CurrentStock.ToString("0.#") / @item.MinThreshold.ToString("0.#") @item.Unit</strong>
-                            <span>@item.ParPercentage%</span>
-                        </div>
-                        <div class="par-track">
-                            <span style="width: @(Math.Clamp(item.ParPercentage, 5, 100))%;"></span>
-                            <i aria-label="Minimum par at 40%"></i>
-                        </div>
-                    </div>
-
-                    <span class="fresh-chip @freshState">
-                        <span class="dot"></span> @item.FreshnessBadge
-                    </span>
-
-                    <strong class="unit-cost">@item.UnitCost.ToString("C") / @item.Unit</strong>
-
-                    <button class="order-button" type="button" @onclick="() => OrderItem(item)">
-                        <Icon Name="plus" Size="14" /> Order
-                    </button>
+                <div style="padding: 32px; text-align: center; color: var(--muted); font-size: 11px;">
+                    No pantry items matched your current search and filters.
                 </div>
+            }
+            else
+            {
+                @foreach (var item in FilteredPantryItems)
+                {
+                    var isChecked = selectedSkus.Contains(item.Sku);
+                    var freshState = GetFreshnessState(item);
+
+                    <div class="table-row @(isChecked ? "selected" : "")">
+                        <input aria-label="Select @item.Name"
+                               checked="@isChecked"
+                               class="row-checkbox"
+                               @onchange="() => ToggleSku(item.Sku)"
+                               type="checkbox" />
+
+                        <div class="ingredient">
+                            <div class="ingredient-icon"><Icon Name="leaf" Size="17" /></div>
+                            <div>
+                                <strong>@item.Name</strong>
+                                <small>@(!string.IsNullOrEmpty(item.LotNumber) ? item.LotNumber : $"Lot #{item.Id + 1000} · {item.Supplier}")</small>
+                            </div>
+                        </div>
+
+                        <span class="location">@(!string.IsNullOrEmpty(item.LocationRack) ? item.LocationRack : item.StorageZone)</span>
+
+                        <div class="par-cell">
+                            <div>
+                                <strong>@item.CurrentStock.ToString("0.#") / @item.MinThreshold.ToString("0.#") @item.Unit</strong>
+                                <span>@item.ParPercentage%</span>
+                            </div>
+                            <div class="par-track">
+                                <span style="width: @(Math.Clamp(item.ParPercentage, 5, 100))%; background: @(item.IsLowStock ? "var(--coral)" : "var(--sage)");"></span>
+                                <i aria-label="Minimum par at 40%"></i>
+                            </div>
+                        </div>
+
+                        <span class="fresh-chip @freshState">
+                            <span class="dot"></span> @item.FreshnessBadge
+                        </span>
+
+                        <strong class="unit-cost">@item.UnitCost.ToString("C") / @item.Unit</strong>
+
+                        <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
+                            <button class="order-button" type="button" @onclick="() => OrderItem(item)">
+                                <Icon Name="plus" Size="13" /> Order
+                            </button>
+                            <button class="icon-button" style="color: var(--coral-deep); padding: 3px;" type="button" title="Delete ingredient" @onclick="() => DeleteItem(item)">
+                                <Icon Name="trash" Size="14" />
+                            </button>
+                        </div>
+                    </div>
+                }
             }
         </div>
 
         <div class="table-footer">
-            <span>Showing @Culinary.PantryStock.Count of 48 ingredients</span>
-            <button type="button" @onclick="ViewAll">
+            <span>Showing @FilteredPantryItems.Count() of @Culinary.PantryStock.Count ingredients</span>
+            <button type="button" @onclick="ResetFilters">
                 View all inventory <Icon Name="chevron" Size="14" />
             </button>
         </div>
@@ -153,63 +177,154 @@
             <span>@selectedSkus.Count items selected</span>
             <i></i>
             <button type="button" @onclick="CreateCombinedPO">
-                Create Combined PO <Icon Name="chevron" Size="14" />
+                Create Combined PO (+10 units) <Icon Name="chevron" Size="14" />
             </button>
         </div>
     }
 </div>
 
+<!-- Modal Dialog to Add New Pantry Ingredient / PO -->
+@if (showNewItemModal)
+{
+    <div class="modal-backdrop" @onclick="() => showNewItemModal = false">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Add Pantry Ingredient / PO</h3>
+                <button class="icon-button" type="button" @onclick="() => showNewItemModal = false">
+                    <Icon Name="x" Size="18" />
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Ingredient Name</label>
+                        <input class="form-input" @bind="newItemName" placeholder="e.g. Wild Chanterelles" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SKU Code</label>
+                        <input class="form-input" @bind="newItemSku" placeholder="e.g. PRD-550" />
+                    </div>
+                    <div class="form-group">
+                        <label>Storage Zone</label>
+                        <select class="form-select" @bind="newItemStorage">
+                            <option value="Walk-in Cooler">Walk-in Cooler</option>
+                            <option value="Dry Larder">Dry Larder</option>
+                            <option value="Freezer">Freezer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Initial Stock</label>
+                        <input class="form-input" type="number" step="0.5" min="0" @bind="newItemStock" />
+                    </div>
+                    <div class="form-group">
+                        <label>Min Par Threshold</label>
+                        <input class="form-input" type="number" step="0.5" min="1" @bind="newItemThreshold" />
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select class="form-select" @bind="newItemUnit">
+                            <option value="lb">lb</option>
+                            <option value="qt">qt</option>
+                            <option value="kg">kg</option>
+                            <option value="pack">pack</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Cost ($)</label>
+                        <input class="form-input" type="number" step="0.25" min="0.10" @bind="newItemCost" />
+                    </div>
+                    <div class="form-group">
+                        <label>Days Until Expiry</label>
+                        <input class="form-input" type="number" min="0" max="365" @bind="newItemExpiryDays" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Supplier</label>
+                        <input class="form-input" @bind="newItemSupplier" placeholder="e.g. Field & Vine" />
+                    </div>
+                    <div class="form-group">
+                        <label>Location / Rack</label>
+                        <input class="form-input" @bind="newItemLocation" placeholder="e.g. Walk-in · Shelf A1" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="button outline-button" type="button" @onclick="() => showNewItemModal = false">Cancel</button>
+                <button class="button primary-button" type="button" @onclick="SubmitNewItem">Save Ingredient</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private HashSet<string> selectedSkus = new() { "SEA-1048", "PRO-2231" };
     private string statusMessage = "";
 
-    private string GetItemSku(FoodSprint.Models.PantryItem item)
-    {
-        if (item.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase)) return "SEA-1048";
-        if (item.Name.Contains("Tomato", StringComparison.OrdinalIgnoreCase)) return "PRO-2231";
-        if (item.Name.Contains("Rice", StringComparison.OrdinalIgnoreCase)) return "DRY-0812";
-        if (item.Name.Contains("Microgreens", StringComparison.OrdinalIgnoreCase)) return "PRO-2904";
-        return !string.IsNullOrEmpty(item.Sku) ? item.Sku : $"SKU-{item.Id:D3}";
-    }
+    private string searchTerm = "";
+    private string filterMode = "All";
+    private string storageFilter = "All";
 
-    private string GetLotDescription(FoodSprint.Models.PantryItem item)
-    {
-        if (item.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase)) return "Lot #9021 · Harbor Fish Co.";
-        if (item.Name.Contains("Tomato", StringComparison.OrdinalIgnoreCase)) return "Lot #4418 · Field & Vine";
-        if (item.Name.Contains("Rice", StringComparison.OrdinalIgnoreCase)) return "Lot #7714 · Urbani Foods";
-        if (item.Name.Contains("Microgreens", StringComparison.OrdinalIgnoreCase)) return "Lot #1172 · City Sprout Farm";
-        if (item.Name.Contains("Duck", StringComparison.OrdinalIgnoreCase)) return "Lot #3391 · Hudson Valley";
-        if (item.Name.Contains("Cream", StringComparison.OrdinalIgnoreCase)) return "Lot #5512 · Ronnybrook";
-        if (item.Name.Contains("Cocoa", StringComparison.OrdinalIgnoreCase)) return "Lot #1204 · Valrhona USA";
-        if (item.Name.Contains("Squid", StringComparison.OrdinalIgnoreCase)) return "Lot #8012 · Point Judith";
-        return $"Lot #{item.Id + 1000} · Supplier Direct";
-    }
+    private bool showNewItemModal = false;
 
-    private string GetLocationDescription(FoodSprint.Models.PantryItem item)
+    // New Item Form
+    private string newItemName = "";
+    private string newItemSku = "";
+    private string newItemStorage = "Walk-in Cooler";
+    private double newItemStock = 20.0;
+    private double newItemThreshold = 30.0;
+    private string newItemUnit = "lb";
+    private decimal newItemCost = 8.50m;
+    private int newItemExpiryDays = 7;
+    private string newItemSupplier = "Organic Co-op";
+    private string newItemLocation = "Walk-in · Shelf B1";
+
+    private IEnumerable<FoodSprint.Models.PantryItem> FilteredPantryItems
     {
-        if (item.Name.Contains("Cod", StringComparison.OrdinalIgnoreCase)) return "Walk-in · Shelf B2";
-        if (item.Name.Contains("Tomato", StringComparison.OrdinalIgnoreCase)) return "Produce · Rack A1";
-        if (item.Name.Contains("Rice", StringComparison.OrdinalIgnoreCase)) return "Dry Store · Bin 14";
-        if (item.Name.Contains("Microgreens", StringComparison.OrdinalIgnoreCase)) return "Walk-in · Shelf A3";
-        if (item.StorageZone.Contains("Cooler", StringComparison.OrdinalIgnoreCase)) return "Walk-in · Shelf C1";
-        if (item.StorageZone.Contains("Dry", StringComparison.OrdinalIgnoreCase)) return "Dry Store · Bin 08";
-        return "Freezer · Unit 02";
+        get
+        {
+            var query = Culinary.PantryStock.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var s = searchTerm.Trim();
+                query = query.Where(p => p.Name.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                                         p.Sku.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                                         p.Supplier.Contains(s, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (filterMode == "LowStock")
+            {
+                query = query.Where(p => p.IsLowStock);
+            }
+            else if (filterMode == "Expiring")
+            {
+                query = query.Where(p => p.DaysUntilExpiry <= 2);
+            }
+
+            if (storageFilter != "All")
+            {
+                query = query.Where(p => p.StorageZone.Equals(storageFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.OrderBy(p => p.DaysUntilExpiry).ThenBy(p => p.Name);
+        }
     }
 
     private string GetFreshnessState(FoodSprint.Models.PantryItem item)
     {
-        if (item.FreshnessBadge.Contains("18h", StringComparison.OrdinalIgnoreCase) ||
-            item.FreshnessBadge.Contains("09h", StringComparison.OrdinalIgnoreCase) ||
-            item.FreshnessVariant == "danger")
-        {
-            return "danger";
-        }
-        if (item.FreshnessBadge.Contains("1d", StringComparison.OrdinalIgnoreCase) ||
-            item.FreshnessBadge.Contains("2 day", StringComparison.OrdinalIgnoreCase) ||
-            item.FreshnessVariant == "warning")
-        {
-            return "warn";
-        }
+        if (item.DaysUntilExpiry <= 0 || item.FreshnessVariant == "danger") return "danger";
+        if (item.DaysUntilExpiry <= 2 || item.FreshnessVariant == "warning") return "warn";
         return "good";
     }
 
@@ -227,31 +342,65 @@
 
     private void OrderItem(FoodSprint.Models.PantryItem item)
     {
-        item.CurrentStock += 5;
-        item.ParPercentage = Math.Min(100, item.ParPercentage + 20);
-        statusMessage = $"PO Created: +5 {item.Unit} of {item.Name} ordered. Par updated to {item.ParPercentage}%.";
+        Culinary.OrderStock(item.Id, 5.0);
+        statusMessage = $"PO Created: +5 {item.Unit} of {item.Name} ordered. Current stock is now {item.CurrentStock:0.#} {item.Unit} ({item.ParPercentage}% Par).";
     }
 
-    private void NewPurchaseOrder()
+    private void DeleteItem(FoodSprint.Models.PantryItem item)
     {
-        statusMessage = "Opened new purchase order draft for reviewed items.";
+        Culinary.DeletePantryItem(item.Id);
+        selectedSkus.Remove(item.Sku);
+        statusMessage = $"Removed '{item.Name}' from pantry stock.";
     }
 
     private void CreateCombinedPO()
     {
-        statusMessage = $"Combined Purchase Order generated for {selectedSkus.Count} items.";
+        var count = selectedSkus.Count;
+        Culinary.BatchOrderStock(selectedSkus, 10.0);
+        statusMessage = $"Combined Purchase Order generated for {count} items (+10 units each)! Stock par levels updated.";
         selectedSkus.Clear();
     }
 
-    private void ToggleFilter()
+    private void ResetFilters()
     {
+        searchTerm = "";
+        filterMode = "All";
+        storageFilter = "All";
     }
 
-    private void ToggleStorage()
+    private void SubmitNewItem()
     {
-    }
+        if (string.IsNullOrWhiteSpace(newItemName))
+        {
+            statusMessage = "Error: Ingredient name is required.";
+            return;
+        }
 
-    private void ViewAll()
-    {
+        var item = new FoodSprint.Models.PantryItem
+        {
+            Name = newItemName.Trim(),
+            Sku = string.IsNullOrWhiteSpace(newItemSku) ? $"ITM-{(Culinary.PantryStock.Count + 101):D3}" : newItemSku.Trim(),
+            StorageZone = newItemStorage,
+            CurrentStock = newItemStock,
+            MinThreshold = Math.Max(1.0, newItemThreshold),
+            Unit = newItemUnit,
+            UnitCost = newItemCost,
+            DaysUntilExpiry = newItemExpiryDays,
+            FreshnessBadge = newItemExpiryDays == 0 ? "12h" : newItemExpiryDays == 1 ? "1d 04h" : $"{newItemExpiryDays} days",
+            FreshnessVariant = newItemExpiryDays <= 0 ? "danger" : newItemExpiryDays <= 2 ? "warning" : "success",
+            Supplier = newItemSupplier.Trim(),
+            LocationRack = newItemLocation.Trim(),
+            LotNumber = $"Lot #{new Random().Next(1000, 9999)} · {newItemSupplier.Trim()}"
+        };
+
+        Culinary.AddPantryItem(item);
+        statusMessage = $"Added new ingredient '{item.Name}' to {item.StorageZone} inventory.";
+        showNewItemModal = false;
+
+        // Reset form
+        newItemName = "";
+        newItemSku = "";
+        newItemStock = 20.0;
+        newItemThreshold = 30.0;
     }
 }
